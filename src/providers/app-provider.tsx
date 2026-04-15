@@ -37,7 +37,7 @@ export function AppProvider({ children }: AppProviderProps) {
         <NuqsAdapter>
           <TooltipProvider>
             {children}
-            <Toaster position="top-right" />
+            <Toaster position="bottom-right" />
           </TooltipProvider>
         </NuqsAdapter>
       </ThemesProvider>

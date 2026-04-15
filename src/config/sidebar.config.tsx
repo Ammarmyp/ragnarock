@@ -19,7 +19,6 @@ import {
   Tag,
   MessageSquare,
   HelpCircle,
-  type LucideIcon,
 } from "lucide-react";
 import type { SidebarConfig, UserRole } from "@/types";
 
@@ -73,7 +72,7 @@ export const sidebarConfig: SidebarConfig = {
       items: [
         {
           title: "Team",
-          href: "/team",
+          href: "/dashboard/organization",
           icon: Users,
           roles: ["admin", "manager", "user"],
         },

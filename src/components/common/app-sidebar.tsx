@@ -7,9 +7,11 @@
  */
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, ChevronsUpDown, LogOut, User } from "lucide-react";
+import { ChevronsUpDown, LogOut, Palette, User } from "lucide-react";
+import { useTheme } from "next-themes";
+import { toast } from "@/lib/toast";
 import {
   Sidebar,
   SidebarContent,
@@ -21,9 +23,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import {
@@ -31,15 +30,20 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { sidebarConfig, getFilteredSidebarConfig } from "@/config/sidebar.config";
+import { getFilteredSidebarConfig } from "@/config/sidebar.config";
 import type { UserRole } from "@/types";
 import { getInitials } from "@/utils/helpers";
-import { cn } from "@/utils/cn";
+import { authClient } from "@/lib/auth/auth-client";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   /**
@@ -63,7 +67,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
  * Displays hierarchical navigation with role-based filtering
  */
 export function AppSidebar({
-  userRole = "user", // Default role for development
+  userRole = "user",
   user = {
     name: "Demo User",
     email: "demo@example.com",
@@ -71,12 +75,45 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const { data: activeMemberRole } = authClient.useActiveMemberRole();
+  const { theme, setTheme } = useTheme();
+
+  const resolvedRole: UserRole =
+    activeMemberRole?.role === "owner" || activeMemberRole?.role === "admin"
+      ? "admin"
+      : activeMemberRole?.role === "member"
+        ? "user"
+        : userRole;
+
+  const resolvedUser = {
+    name: session?.user?.name || user.name,
+    email: session?.user?.email || user.email,
+    avatar: session?.user?.image || user.avatar,
+  };
 
   // Get filtered navigation based on user role
   const config = React.useMemo(
-    () => getFilteredSidebarConfig(userRole),
-    [userRole]
+    () => getFilteredSidebarConfig(resolvedRole),
+    [resolvedRole]
   );
+
+  const handleSignOut = async () => {
+    try {
+      const loadingToast = toast.loading("Logging out...");
+      const result = await authClient.signOut();
+      if (result.error) {
+        toast.error("Could not log out", { id: loadingToast });
+        return;
+      }
+      toast.success("Logged out", { id: loadingToast });
+      router.replace("/sign-in");
+    } catch (error) {
+      console.error("Sign out failed", error);
+      toast.error("Failed to log out");
+    }
+  };
 
   /**
    * Checks if a path is currently active
@@ -205,15 +242,15 @@ export function AppSidebar({
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={resolvedUser.avatar} alt={resolvedUser.name} />
                     <AvatarFallback className="rounded-lg">
-                      {getInitials(user.name)}
+                      {getInitials(resolvedUser.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user.name}</span>
+                    <span className="truncate font-semibold">{resolvedUser.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {user.email}
+                      {resolvedUser.email}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
@@ -228,15 +265,15 @@ export function AppSidebar({
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarImage src={resolvedUser.avatar} alt={resolvedUser.name} />
                       <AvatarFallback className="rounded-lg">
-                        {getInitials(user.name)}
+                        {getInitials(resolvedUser.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{user.name}</span>
+                      <span className="truncate font-semibold">{resolvedUser.name}</span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {user.email}
+                        {resolvedUser.email}
                       </span>
                     </div>
                   </div>
@@ -248,8 +285,27 @@ export function AppSidebar({
                     Profile
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Palette className="mr-2 size-4" />
+                    Theme
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={theme ?? "system"}
+                      onValueChange={setTheme}
+                    >
+                      <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                  onClick={handleSignOut}
+                >
                   <LogOut className="mr-2 size-4" />
                   Log out
                 </DropdownMenuItem>

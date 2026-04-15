@@ -8,38 +8,79 @@
 import * as React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/utils/cn";
 
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setIsLoading(true);
 
-    // TODO: Implement actual sign-in logic with your API
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const loadingToast = toast.loading("Signing in...");
+      const result = await authClient.signIn.email({
+        email,
+        password,
+        rememberMe,
+      });
 
-      // For now, just redirect to dashboard
-      router.push("/dashboard");
+      if (result.error) {
+        toast.error("Sign-in failed. Check your credentials", { id: loadingToast });
+        return;
+      }
+
+      toast.success("Logged in successfully", { id: loadingToast });
+      router.push(redirectTo);
     } catch (error) {
-      console.error("Sign in failed:", error);
+      console.error("Sign in failed", error);
+      toast.error("Sign-in failed. Please try again");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!email) {
+      toast.error("Enter your email to get an OTP");
+      return;
+    }
+
+    try {
+      const loadingToast = toast.loading("Sending OTP...");
+      const result = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: "sign-in",
+      });
+
+      if (result.error) {
+        toast.error("Could not send OTP code", { id: loadingToast });
+        return;
+      }
+
+      toast.success("OTP sent. Check your inbox", { id: loadingToast });
+      router.push(
+        `/verify-otp?email=${encodeURIComponent(email)}&flow=sign-in&redirectTo=${encodeURIComponent(redirectTo)}`,
+      );
+    } catch (error) {
+      console.error("Failed to send OTP", error);
+      toast.error("Failed to send OTP");
     }
   };
 
@@ -152,6 +193,16 @@ export function SignInForm() {
           ) : (
             "Log in"
           )}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!email || isLoading}
+          onClick={handleSendOtp}
+          className="w-full h-11 text-[15px] font-medium"
+        >
+          Sign in with OTP
         </Button>
       </form>
 

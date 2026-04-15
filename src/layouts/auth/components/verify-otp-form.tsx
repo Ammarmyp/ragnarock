@@ -7,16 +7,22 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/utils/cn";
 
 export function VerifyOtpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const email = searchParams.get("email") ?? "";
+  const flow = searchParams.get("flow") ?? "email-verification";
+  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
   // Cooldown timer for resend
   useEffect(() => {
@@ -101,19 +107,32 @@ export function VerifyOtpForm() {
 
     setIsLoading(true);
 
-    // TODO: Implement actual OTP verification with your API
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
+      const loadingToast = toast.loading("Verifying OTP...");
       const otpValue = otp.join("");
-      console.log("Verifying OTP:", otpValue);
+      const result =
+        flow === "sign-in"
+          ? await authClient.signIn.emailOtp({
+              email,
+              otp: otpValue,
+            })
+          : await authClient.emailOtp.verifyEmail({
+              email,
+              otp: otpValue,
+            });
 
-      // Redirect to dashboard on success
-      router.push("/dashboard");
+      if (result.error) {
+        toast.error("Invalid or expired OTP", { id: loadingToast });
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
+      toast.success("OTP verified successfully", { id: loadingToast });
+      router.push(redirectTo);
     } catch (error) {
-      console.error("OTP verification failed:", error);
-      // Clear OTP on error
+      console.error("OTP verification failed", error);
+      toast.error("Could not verify OTP");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -123,18 +142,28 @@ export function VerifyOtpForm() {
 
   const handleResend = async () => {
     if (resendCooldown > 0) return;
+    if (!email) {
+      toast.error("Missing email address for OTP");
+      return;
+    }
 
-    // TODO: Implement actual resend logic with your API
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const loadingToast = toast.loading("Sending OTP...");
+      const result = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: flow === "sign-in" ? "sign-in" : "email-verification",
+      });
 
-      // Set 60 second cooldown
+      if (result.error) {
+        toast.error("Could not resend OTP", { id: loadingToast });
+        return;
+      }
+
       setResendCooldown(60);
-
-      // Show success feedback
-      console.log("OTP resent successfully");
+      toast.success("OTP sent", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to resend OTP:", error);
+      console.error("Failed to resend OTP", error);
+      toast.error("Failed to resend OTP");
     }
   };
 
@@ -145,10 +174,10 @@ export function VerifyOtpForm() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Verify your email</h1>
         <p className="text-muted-foreground mt-2">
-          Enter the 6-digit code we sent to your email
+          Enter the 6-digit code we sent to your email.
         </p>
         <p className="text-sm text-foreground font-medium mt-1">
-          demo@example.com
+          {email || "No email provided"}
         </p>
       </div>
 

@@ -10,10 +10,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/utils/cn";
 
 export function SignUpForm() {
@@ -29,21 +31,31 @@ export function SignUpForm() {
     e.preventDefault();
 
     if (!agreeToTerms) {
-      alert("Please agree to the Terms of use and Privacy Policy");
+      toast.error("Please accept the terms to continue");
       return;
     }
 
     setIsLoading(true);
 
-    // TODO: Implement actual sign-up logic with your API
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const loadingToast = toast.loading("Creating account...");
 
-      // For now, just redirect to verify OTP page
-      router.push("/verify-otp");
+      const signUpResult = await authClient.signUp.email({
+        email,
+        password,
+        name: email.split("@")[0],
+      });
+
+      if (signUpResult.error) {
+        toast.error("Could not create your account", { id: loadingToast });
+        return;
+      }
+
+      toast.success("Account created. OTP sent to your email", { id: loadingToast });
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}&flow=email-verification`);
     } catch (error) {
-      console.error("Sign up failed:", error);
+      console.error("Sign up failed", error);
+      toast.error("Sign-up failed. Please try again");
     } finally {
       setIsLoading(false);
     }
