@@ -51,8 +51,14 @@ export function HomeLayout({ children }: HomeLayoutProps) {
             >
               Dashboard
             </Link>
+            <Link
+              href="/sign-in"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Sign In
+            </Link>
             <Button asChild>
-              <Link href="/login">Get Started</Link>
+              <Link href="/sign-up">Get Started</Link>
             </Button>
           </nav>
         </div>
