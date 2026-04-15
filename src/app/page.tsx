@@ -1,68 +1,112 @@
-import { ModeToggle } from "@/components/mode-toggle";
-import Image from "next/image";
+/**
+ * Home Page
+ * Landing page for the application
+ */
 
-export default function Home() {
+import { HomeLayout } from "@/layouts/home/home-layout";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Zap, Shield, Users } from "lucide-react";
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <ModeToggle />
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <HomeLayout>
+      {/* Hero Section */}
+      <section className="container flex flex-col items-center gap-8 py-20 md:py-32">
+        <div className="mx-auto flex max-w-[980px] flex-col items-center gap-4 text-center">
+          <h1 className="text-4xl font-bold leading-tight tracking-tighter md:text-6xl lg:text-7xl">
+            Modern Requirements Management
+            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {" "}
+              Made Simple
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-[750px] text-lg text-muted-foreground sm:text-xl">
+            Streamline your project requirements with Ragnarock. Collaborate
+            with your team, track changes, and deliver better products faster.
           </p>
+          <div className="flex gap-4">
+            <Button size="lg" asChild>
+              <Link href="/dashboard">
+                Get Started
+                <ArrowRight className="ml-2 size-4" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/help">Learn More</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Features Section */}
+      <section className="container py-20 md:py-24">
+        <div className="mx-auto flex max-w-[980px] flex-col items-center gap-12">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              Everything you need
+            </h2>
+            <p className="max-w-[700px] text-muted-foreground md:text-xl">
+              Built with modern technologies and best practices to help your
+              team succeed
+            </p>
+          </div>
+
+          <div className="grid w-full gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {/* Feature 1 */}
+            <div className="flex flex-col items-center gap-2 rounded-lg border bg-card p-6 text-center">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
+                <Zap className="size-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Fast & Efficient</h3>
+              <p className="text-sm text-muted-foreground">
+                Lightning-fast performance built on Next.js 15 and React 19
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="flex flex-col items-center gap-2 rounded-lg border bg-card p-6 text-center">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
+                <Shield className="size-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Secure & Reliable</h3>
+              <p className="text-sm text-muted-foreground">
+                Role-based access control and enterprise-grade security
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="flex flex-col items-center gap-2 rounded-lg border bg-card p-6 text-center">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
+                <Users className="size-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Team Collaboration</h3>
+              <p className="text-sm text-muted-foreground">
+                Work together seamlessly with real-time updates and sharing
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container py-20 md:py-24">
+        <div className="mx-auto flex max-w-[980px] flex-col items-center gap-8 rounded-lg border bg-muted/50 p-12 text-center">
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            Ready to get started?
+          </h2>
+          <p className="max-w-[600px] text-lg text-muted-foreground">
+            Join teams who are already using Ragnarock to manage their
+            requirements and ship better products.
+          </p>
+          <Button size="lg" asChild>
+            <Link href="/dashboard">
+              Start Managing Requirements
+              <ArrowRight className="ml-2 size-4" />
+            </Link>
+          </Button>
+        </div>
+      </section>
+    </HomeLayout>
   );
 }
