@@ -5,6 +5,7 @@
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import type { ApiResponse, ApiError } from '@/types';
+import { getBearerToken } from '@/lib/auth/bearer-token';
 
 // Base API URL - configure via environment variable
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -13,6 +14,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 30000, // 30 seconds
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -25,11 +27,10 @@ const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get auth token from localStorage or cookie (when auth is implemented)
-    // const token = localStorage.getItem('authToken');
-    // if (token && config.headers) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = getBearerToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
     // Log request in development
     if (process.env.NODE_ENV === 'development') {

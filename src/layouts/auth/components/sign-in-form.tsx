@@ -47,7 +47,8 @@ export function SignInForm() {
       }
 
       toast.success("Logged in successfully", { id: loadingToast });
-      router.push(redirectTo);
+      router.replace(redirectTo);
+      router.refresh();
     } catch (error) {
       console.error("Sign in failed", error);
       toast.error("Sign-in failed. Please try again");

@@ -9,7 +9,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronsUpDown, LogOut, Palette, User } from "lucide-react";
+import { ChevronsUpDown, FileText, FolderKanban, LayoutDashboard, ListChecks, LogOut, MessageSquare, Palette, ScrollText, User, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "@/lib/toast";
 import {
@@ -40,10 +40,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { getFilteredSidebarConfig } from "@/config/sidebar.config";
 import type { UserRole } from "@/types";
 import { getInitials } from "@/utils/helpers";
 import { authClient } from "@/lib/auth/auth-client";
+import { clearBearerToken } from "@/lib/auth/bearer-token";
+import { useProjectWorkspaceStore } from "@/stores/project-workspace.store";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   /**
@@ -67,25 +68,18 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
  * Displays hierarchical navigation with role-based filtering
  */
 export function AppSidebar({
-  userRole = "user",
+  userRole: _userRole = "user",
   user = {
     name: "Demo User",
     email: "demo@example.com",
   },
   ...props
 }: AppSidebarProps) {
+  void _userRole;
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = authClient.useSession();
-  const { data: activeMemberRole } = authClient.useActiveMemberRole();
   const { theme, setTheme } = useTheme();
-
-  const resolvedRole: UserRole =
-    activeMemberRole?.role === "owner" || activeMemberRole?.role === "admin"
-      ? "admin"
-      : activeMemberRole?.role === "member"
-        ? "user"
-        : userRole;
 
   const resolvedUser = {
     name: session?.user?.name || user.name,
@@ -93,11 +87,48 @@ export function AppSidebar({
     avatar: session?.user?.image || user.avatar,
   };
 
-  // Get filtered navigation based on user role
-  const config = React.useMemo(
-    () => getFilteredSidebarConfig(resolvedRole),
-    [resolvedRole]
-  );
+  const setSelectedProjectId = useProjectWorkspaceStore((state) => state.setSelectedProjectId);
+  const projectMatch = pathname?.match(/^\/dashboard\/projects\/([^/]+)/);
+  const activeProjectId = projectMatch?.[1] ?? null;
+  const isProjectWorkspace = Boolean(activeProjectId);
+  React.useEffect(() => {
+    setSelectedProjectId(activeProjectId);
+  }, [activeProjectId, setSelectedProjectId]);
+
+  const config = React.useMemo(() => {
+    const globalItems = [
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { title: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+      { title: "Organization", href: "/dashboard/organization", icon: Users },
+    ];
+
+    if (!isProjectWorkspace || !activeProjectId) {
+      return {
+        navGroups: [{ title: "Workspace", items: globalItems }],
+        footerItems: [],
+      };
+    }
+
+    const base = `/dashboard/projects/${activeProjectId}`;
+    return {
+      navGroups: [
+        { title: "Workspace", items: globalItems },
+        {
+          title: "Project",
+          items: [
+            { title: "Overview", href: `${base}/overview`, icon: LayoutDashboard },
+            { title: "Documentation", href: `${base}/documentation`, icon: FileText },
+            { title: "Tasks", href: `${base}/tasks`, icon: ListChecks },
+            { title: "Requirements", href: `${base}/requirements`, icon: ScrollText },
+            { title: "Members", href: `${base}/members`, icon: Users },
+            { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
+            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare, badge: "Soon", disabled: true },
+          ],
+        },
+      ],
+      footerItems: [],
+    };
+  }, [isProjectWorkspace, activeProjectId]);
 
   const handleSignOut = async () => {
     try {
@@ -107,6 +138,7 @@ export function AppSidebar({
         toast.error("Could not log out", { id: loadingToast });
         return;
       }
+      clearBearerToken();
       toast.success("Logged out", { id: loadingToast });
       router.replace("/sign-in");
     } catch (error) {
@@ -189,11 +221,6 @@ export function AppSidebar({
                               {item.badge}
                             </Badge>
                           )}
-                          {item.label && (
-                            <span className="ml-auto text-xs text-muted-foreground">
-                              {item.label}
-                            </span>
-                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -207,31 +234,6 @@ export function AppSidebar({
 
       {/* Sidebar Footer */}
       <SidebarFooter>
-        {/* Footer Navigation Items */}
-        {config.footerItems && config.footerItems.length > 0 && (
-          <SidebarMenu>
-            {config.footerItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = isActivePath(item.href);
-
-              return (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.href}>
-                      {Icon && <Icon className="size-4" />}
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        )}
-
         {/* User Profile Dropdown */}
         <SidebarMenu>
           <SidebarMenuItem>

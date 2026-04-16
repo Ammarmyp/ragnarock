@@ -38,15 +38,24 @@ export const USER_ENDPOINTS = {
 export const PROJECT_ENDPOINTS = {
   LIST: "/projects",
   CREATE: "/projects",
-  GET: (id: string) => `/projects/${id}`,
-  UPDATE: (id: string) => `/projects/${id}`,
-  DELETE: (id: string) => `/projects/${id}`,
-  ARCHIVE: (id: string) => `/projects/${id}/archive`,
-  RESTORE: (id: string) => `/projects/${id}/restore`,
-  MEMBERS: (id: string) => `/projects/${id}/members`,
-  ADD_MEMBER: (id: string) => `/projects/${id}/members`,
-  REMOVE_MEMBER: (id: string, memberId: string) =>
-    `/projects/${id}/members/${memberId}`,
+  GET: (projectId: string) => `/projects/${projectId}`,
+  UPDATE: (projectId: string) => `/projects/${projectId}`,
+  DELETE: (projectId: string) => `/projects/${projectId}`,
+  ARCHIVE: (projectId: string) => `/projects/${projectId}/archive`,
+  RESTORE: (projectId: string) => `/projects/${projectId}/restore`,
+  MY_ROLE: (projectId: string) => `/projects/${projectId}/my-role`,
+  OVERVIEW: (projectId: string) => `/projects/${projectId}/overview`,
+  MEMBERS: (projectId: string) => `/projects/${projectId}/members`,
+  MEMBER: (projectId: string, userId: string) => `/projects/${projectId}/members/${userId}`,
+  TASKS: (projectId: string) => `/projects/${projectId}/tasks`,
+  TASK: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
+  DOCUMENTATIONS: (projectId: string) => `/projects/${projectId}/documentations`,
+  DOCUMENTATION: (projectId: string, documentationId: string) =>
+    `/projects/${projectId}/documentations/${documentationId}`,
+  REQUIREMENTS: (projectId: string) => `/projects/${projectId}/requirements`,
+  REQUIREMENT: (projectId: string, requirementId: string) =>
+    `/projects/${projectId}/requirements/${requirementId}`,
+  ACTIVITY: (projectId: string) => `/projects/${projectId}/activity`,
 } as const;
 
 /**

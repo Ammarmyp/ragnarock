@@ -129,7 +129,8 @@ export function VerifyOtpForm() {
       }
 
       toast.success("OTP verified successfully", { id: loadingToast });
-      router.push(redirectTo);
+      router.replace(redirectTo);
+      router.refresh();
     } catch (error) {
       console.error("OTP verification failed", error);
       toast.error("Could not verify OTP");

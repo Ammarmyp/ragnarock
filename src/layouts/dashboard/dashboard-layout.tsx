@@ -19,6 +19,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { AppSidebar } from "@/components/common/app-sidebar";
+import { DashboardAuthGate } from "@/components/common/dashboard-auth-gate";
+import { OrganizationScopedQuerySync } from "@/components/common/organization-scoped-query-sync";
 import type { UserRole } from "@/types";
 
 interface DashboardLayoutProps {
@@ -79,9 +81,11 @@ export function DashboardLayout({
   const breadcrumbs = useBreadcrumbs();
 
   return (
-    <SidebarProvider>
-      <AppSidebar userRole={userRole} user={user} />
-      <SidebarInset>
+    <DashboardAuthGate>
+      <OrganizationScopedQuerySync />
+      <SidebarProvider>
+        <AppSidebar userRole={userRole} user={user} />
+        <SidebarInset>
         {/* Header */}
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2">
@@ -115,6 +119,7 @@ export function DashboardLayout({
           </div>
         </main>
       </SidebarInset>
-    </SidebarProvider>
+      </SidebarProvider>
+    </DashboardAuthGate>
   );
 }

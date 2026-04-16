@@ -11,3 +11,14 @@ export function setLastActiveOrganizationIdClient(organizationId: string) {
   const maxAge = 60 * 60 * 24 * 365;
   document.cookie = `${LAST_ACTIVE_ORGANIZATION_COOKIE_NAME}=${encodeURIComponent(organizationId)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
 }
+
+export function getLastActiveOrganizationIdClient(): string | null {
+  if (typeof document === "undefined") return null;
+  const key = `${LAST_ACTIVE_ORGANIZATION_COOKIE_NAME}=`;
+  const value = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(key));
+  if (!value) return null;
+  return decodeURIComponent(value.slice(key.length));
+}
