@@ -85,7 +85,7 @@ export function DashboardLayout({
       <OrganizationScopedQuerySync />
       <SidebarProvider>
         <AppSidebar userRole={userRole} user={user} />
-        <SidebarInset>
+        <SidebarInset className="min-h-0 flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2">
@@ -112,9 +112,9 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
+        {/* Main Content — min-h-0 lets nested routes fill viewport height without double scroll */}
+        <main className="flex min-h-0 flex-1 flex-col p-4 pt-2">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-xl bg-muted/50">
             {children}
           </div>
         </main>
