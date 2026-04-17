@@ -22,14 +22,14 @@ export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspace
 
   return (
     <DashboardLayout>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-5">
+      <div className="flex h-full min-h-0 flex-1 flex-col gap-3 p-4 md:p-5">
         <div className="shrink-0">
           <h1 className="text-xl font-bold tracking-tight md:text-2xl">{project?.name ?? "Project Workspace"}</h1>
           <p className="text-muted-foreground text-xs md:text-sm">
             Role: <span className="capitalize">{role?.role ?? "viewer"}</span>
           </p>
         </div>
-        <div className="min-h-0 flex-1">{children}</div>
+        {children}
       </div>
     </DashboardLayout>
   );

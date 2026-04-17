@@ -30,6 +30,15 @@ export interface PaginatedResponse<T> {
   };
 }
 
+/** Aligns with backend `@app/common` `PaginatedResponseBase<T>`. */
+export interface PaginatedResponseBase<T> {
+  items: T[];
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
 // User & Auth Types (for future integration)
 export type UserRole = 'admin' | 'manager' | 'user' | 'viewer';
 

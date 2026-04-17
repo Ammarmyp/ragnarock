@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseMutationOptions,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
 import {
   addProjectMember,
   createProject,
@@ -11,6 +18,7 @@ import {
   deleteProjectTask,
   getProject,
   getProjectActivity,
+  getProjectDocumentation,
   getProjectDocumentations,
   getProjectMembers,
   getProjectOverview,
@@ -27,6 +35,7 @@ import {
   type AddProjectMemberDto,
   type CreateProjectDocumentationDto,
   type CreateProjectDto,
+  type ListProjectDocumentationsParams,
   type CreateProjectRequirementDto,
   type CreateProjectTaskDto,
   type Project,
@@ -41,7 +50,7 @@ import {
   type UpdateProjectRequirementDto,
   type UpdateProjectTaskDto,
 } from "@/api/projects.api";
-import type { PaginatedResponse, PaginationParams } from "@/types";
+import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
 
 export const projectKeys = {
   all: ["projects"] as const,
@@ -54,12 +63,27 @@ export const projectKeys = {
   members: (id: string) => [...projectKeys.detail(id), "members"] as const,
   tasks: (id: string, params: PaginationParams & { status?: ProjectTask["status"] }) =>
     [...projectKeys.detail(id), "tasks", params] as const,
-  documentations: (id: string, params: PaginationParams & { type?: ProjectDocumentation["type"] }) =>
+  documentations: (id: string, params: ListProjectDocumentationsParams) =>
     [...projectKeys.detail(id), "documentations", params] as const,
+  documentation: (projectId: string, documentationId: string) =>
+    [...projectKeys.detail(projectId), "documentation", documentationId] as const,
   requirements: (id: string, params: PaginationParams & { status?: ProjectRequirement["status"] }) =>
     [...projectKeys.detail(id), "requirements", params] as const,
   activity: (id: string, params: PaginationParams) => [...projectKeys.detail(id), "activity", params] as const,
 };
+
+/** Refetch documentation list, optional detail, and project overview after doc CRUD. */
+export function invalidateProjectDocumentationQueries(
+  queryClient: QueryClient,
+  projectId: string,
+  documentationId?: string,
+) {
+  queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(projectId), "documentations"] });
+  if (documentationId) {
+    queryClient.invalidateQueries({ queryKey: projectKeys.documentation(projectId, documentationId) });
+  }
+  queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
+}
 
 export function useProjects(params: PaginationParams & { status?: Project["status"]; search?: string }, options?: Omit<UseQueryOptions<PaginatedResponse<Project>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.list(params), queryFn: () => getProjects(params), ...options });
@@ -79,8 +103,30 @@ export function useProjectMembers(id: string, options?: Omit<UseQueryOptions<Pro
 export function useProjectTasks(id: string, params: PaginationParams & { status?: ProjectTask["status"] }, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectTask>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.tasks(id, params), queryFn: () => getProjectTasks(id, params), enabled: !!id, ...options });
 }
-export function useProjectDocumentations(id: string, params: PaginationParams & { type?: ProjectDocumentation["type"] }, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectDocumentation>, Error>, "queryKey" | "queryFn">) {
-  return useQuery({ queryKey: projectKeys.documentations(id, params), queryFn: () => getProjectDocumentations(id, params), enabled: !!id, ...options });
+export function useProjectDocumentations(
+  id: string,
+  params: ListProjectDocumentationsParams,
+  options?: Omit<UseQueryOptions<PaginatedResponseBase<ProjectDocumentation>, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.documentations(id, params),
+    queryFn: () => getProjectDocumentations(id, params),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useProjectDocumentation(
+  projectId: string,
+  documentationId: string,
+  options?: Omit<UseQueryOptions<ProjectDocumentation, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.documentation(projectId, documentationId),
+    queryFn: () => getProjectDocumentation(projectId, documentationId),
+    enabled: !!projectId && !!documentationId,
+    ...options,
+  });
 }
 export function useProjectRequirements(id: string, params: PaginationParams & { status?: ProjectRequirement["status"] }, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectRequirement>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.requirements(id, params), queryFn: () => getProjectRequirements(id, params), enabled: !!id, ...options });
@@ -117,9 +163,19 @@ export function useCreateProjectTask(options?: UseMutationOptions<ProjectTask, E
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: ({ projectId, data }) => createProjectTask(projectId, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(v.projectId), "tasks"] }), ...options });
 }
-export function useCreateProjectDocumentation(options?: UseMutationOptions<ProjectDocumentation, Error, { projectId: string; data: CreateProjectDocumentationDto }>) {
+export function useCreateProjectDocumentation(
+  options?: UseMutationOptions<ProjectDocumentation, Error, { projectId: string; data: CreateProjectDocumentationDto }>,
+) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ projectId, data }) => createProjectDocumentation(projectId, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(v.projectId), "documentations"] }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => createProjectDocumentation(projectId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectDocumentationQueries(queryClient, variables.projectId, data.id);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useCreateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; data: CreateProjectRequirementDto }>) {
   const queryClient = useQueryClient();
@@ -128,8 +184,24 @@ export function useCreateProjectRequirement(options?: UseMutationOptions<Project
 export function useUpdateProjectTask(options?: UseMutationOptions<ProjectTask, Error, { projectId: string; taskId: string; data: UpdateProjectTaskDto }>) {
   return useMutation({ mutationFn: ({ projectId, taskId, data }) => updateProjectTask(projectId, taskId, data), ...options });
 }
-export function useUpdateProjectDocumentation(options?: UseMutationOptions<ProjectDocumentation, Error, { projectId: string; documentationId: string; data: UpdateProjectDocumentationDto }>) {
-  return useMutation({ mutationFn: ({ projectId, documentationId, data }) => updateProjectDocumentation(projectId, documentationId, data), ...options });
+export function useUpdateProjectDocumentation(
+  options?: UseMutationOptions<
+    ProjectDocumentation,
+    Error,
+    { projectId: string; documentationId: string; data: UpdateProjectDocumentationDto }
+  >,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, documentationId, data }) =>
+      updateProjectDocumentation(projectId, documentationId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectDocumentationQueries(queryClient, variables.projectId, variables.documentationId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useUpdateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; requirementId: string; data: UpdateProjectRequirementDto }>) {
   return useMutation({ mutationFn: ({ projectId, requirementId, data }) => updateProjectRequirement(projectId, requirementId, data), ...options });
@@ -137,8 +209,20 @@ export function useUpdateProjectRequirement(options?: UseMutationOptions<Project
 export function useDeleteProjectTask(options?: UseMutationOptions<void, Error, { projectId: string; taskId: string }>) {
   return useMutation({ mutationFn: ({ projectId, taskId }) => deleteProjectTask(projectId, taskId), ...options });
 }
-export function useDeleteProjectDocumentation(options?: UseMutationOptions<void, Error, { projectId: string; documentationId: string }>) {
-  return useMutation({ mutationFn: ({ projectId, documentationId }) => deleteProjectDocumentation(projectId, documentationId), ...options });
+export function useDeleteProjectDocumentation(
+  options?: UseMutationOptions<void, Error, { projectId: string; documentationId: string }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, documentationId }) => deleteProjectDocumentation(projectId, documentationId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.removeQueries({ queryKey: projectKeys.documentation(variables.projectId, variables.documentationId) });
+      invalidateProjectDocumentationQueries(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useDeleteProjectRequirement(options?: UseMutationOptions<void, Error, { projectId: string; requirementId: string }>) {
   return useMutation({ mutationFn: ({ projectId, requirementId }) => deleteProjectRequirement(projectId, requirementId), ...options });

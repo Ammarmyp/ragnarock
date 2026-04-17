@@ -7,7 +7,12 @@
 import type { AxiosResponse } from "axios";
 import apiClient from "./client";
 import { PROJECT_ENDPOINTS, buildQueryString } from "./endpoints";
-import type { ApiResponse, PaginatedResponse, PaginationParams } from "@/types";
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  PaginatedResponseBase,
+  PaginationParams,
+} from "@/types";
 
 /**
  * Nest returns resources directly on `response.data`.
@@ -89,16 +94,47 @@ export type ProjectTask = {
   updatedAt: string;
 };
 
+export type DocumentationType =
+  | "brd"
+  | "prd"
+  | "frd"
+  | "srs"
+  | "srd"
+  | "trd"
+  | "sad"
+  | "adr"
+  | "hld"
+  | "lld"
+  | "icd"
+  | "dbd"
+  | "api"
+  | "stp"
+  | "std"
+  | "rtm"
+  | "ug"
+  | "om"
+  | "wbs"
+  | "raci"
+  | "note";
+
+export type DocumentationStatus = "draft" | "pending_review" | "completed" | "rejected";
+
 export type ProjectDocumentation = {
   id: string;
   projectId: string;
   title: string;
-  type: "srs" | "srd" | "architecture" | "api" | "note";
+  type: DocumentationType;
+  status: DocumentationStatus;
   content: string;
   version: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  author?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
 };
 
 export type ProjectRequirement = {
@@ -137,10 +173,19 @@ export type UpdateProjectTaskDto = Partial<CreateProjectTaskDto>;
 
 export type CreateProjectDocumentationDto = {
   title: string;
-  type: ProjectDocumentation["type"];
+  type: DocumentationType;
   content: string;
+  status?: DocumentationStatus;
 };
 export type UpdateProjectDocumentationDto = Partial<CreateProjectDocumentationDto>;
+
+export type ListProjectDocumentationsParams = {
+  page: number;
+  perPage: number;
+  search?: string;
+  status?: DocumentationStatus;
+  type?: DocumentationType;
+};
 
 export type CreateProjectRequirementDto = {
   title: string;
@@ -319,12 +364,22 @@ export async function deleteProjectTask(projectId: string, taskId: string): Prom
 
 export async function getProjectDocumentations(
   projectId: string,
-  params: PaginationParams & { type?: ProjectDocumentation["type"] },
-): Promise<PaginatedResponse<ProjectDocumentation>> {
+  params: ListProjectDocumentationsParams,
+): Promise<PaginatedResponseBase<ProjectDocumentation>> {
   const response = await apiClient.get<unknown>(
     `${PROJECT_ENDPOINTS.DOCUMENTATIONS(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
   );
-  return parseResponseData<PaginatedResponse<ProjectDocumentation>>(response);
+  return parseResponseData<PaginatedResponseBase<ProjectDocumentation>>(response);
+}
+
+export async function getProjectDocumentation(
+  projectId: string,
+  documentationId: string,
+): Promise<ProjectDocumentation> {
+  const response = await apiClient.get<unknown>(
+    PROJECT_ENDPOINTS.DOCUMENTATION(projectId, documentationId),
+  );
+  return parseResponseData<ProjectDocumentation>(response);
 }
 
 export async function createProjectDocumentation(

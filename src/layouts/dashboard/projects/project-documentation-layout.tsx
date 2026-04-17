@@ -1,121 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "@tanstack/react-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useCreateProjectDocumentation, useProjectDocumentations } from "@/hooks/use-projects";
-import { toast } from "@/lib/toast";
-
-const documentationSchema = z.object({
-  title: z.string().min(3),
-  type: z.string().min(1),
-  content: z.string().min(10, "Content is required"),
-});
+import { useMemo } from "react";
+import { FileText } from "lucide-react";
+import { DocumentationCreateDialog } from "@/components/documentation/documentation-create-dialog";
+import { DocumentationListFilters } from "@/components/documentation/documentation-list-filters";
+import { DocumentationListSection } from "@/components/documentation/documentation-list-section";
+import { useProjectDocumentations, useProjectRole } from "@/hooks/use-projects";
+import { useDocumentationWorkspaceStore } from "@/stores/documentation-workspace.store";
 
 export function ProjectDocumentationLayout({ projectId }: { projectId: string }) {
-  const [open, setOpen] = useState(false);
-  const { data } = useProjectDocumentations(projectId, { page: 1, limit: 50 });
-  const createDocumentation = useCreateProjectDocumentation({
-    onSuccess: () => {
-      toast.success("Document created");
-      setOpen(false);
-    },
-  });
+  const search = useDocumentationWorkspaceStore((s) => s.search);
+  const setSearch = useDocumentationWorkspaceStore((s) => s.setSearch);
+  const statusFilter = useDocumentationWorkspaceStore((s) => s.statusFilter);
+  const setStatusFilter = useDocumentationWorkspaceStore((s) => s.setStatusFilter);
+  const typeFilter = useDocumentationWorkspaceStore((s) => s.typeFilter);
+  const setTypeFilter = useDocumentationWorkspaceStore((s) => s.setTypeFilter);
+  const page = useDocumentationWorkspaceStore((s) => s.page);
+  const setPage = useDocumentationWorkspaceStore((s) => s.setPage);
+  const perPage = useDocumentationWorkspaceStore((s) => s.perPage);
 
-  const form = useForm({
-    defaultValues: { title: "", type: "note", content: "" },
-    validators: { onSubmit: documentationSchema },
-    onSubmit: async ({ value }) => {
-      await createDocumentation.mutateAsync({ projectId, data: value as never });
-      form.reset();
-    },
-  });
+  const listParams = useMemo(
+    () => ({
+      page,
+      perPage,
+      ...(search.trim() ? { search: search.trim() } : {}),
+      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+      ...(typeFilter !== "all" ? { type: typeFilter } : {}),
+    }),
+    [page, perPage, search, statusFilter, typeFilter],
+  );
+
+  const { data, isLoading } = useProjectDocumentations(projectId, listParams);
+  const { data: role } = useProjectRole(projectId);
+  const canCreate = role?.role === "owner" || role?.role === "admin" || role?.role === "member";
+
+  const items = data?.items ?? [];
+  const totalPages = data?.totalPages ?? 0;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Documentation</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">New Document</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Documentation</DialogTitle>
-              <DialogDescription>Add SRS, SRD, architecture notes, and related docs.</DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                form.handleSubmit();
-              }}
-            >
-              {(["title", "type"] as const).map((name) => (
-                <form.Field key={name} name={name}>
-                  {(field) => {
-                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>{name === "title" ? "Title" : "Type"}</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value as never)}
-                          aria-invalid={isInvalid}
-                        />
-                        {name === "type" && (
-                          <FieldDescription>Use one of: srs, srd, architecture, api, note.</FieldDescription>
-                        )}
-                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                      </Field>
-                    );
-                  }}
-                </form.Field>
-              ))}
-              <form.Field name="content">
-                {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Content</FieldLabel>
-                      <Textarea
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        aria-invalid={isInvalid}
-                      />
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                    </Field>
-                  );
-                }}
-              </form.Field>
-              <DialogFooter>
-                <Button type="submit">Create</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {data?.data.map((doc) => (
-          <div key={doc.id} className="rounded-md border p-3">
-            <p className="font-medium">{doc.title}</p>
-            <p className="text-xs text-muted-foreground">
-              {doc.type} • v{doc.version}
-            </p>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 pb-4 sm:px-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <FileText className="size-5 opacity-90" />
+          Documentation
+        </h2>
+        {canCreate && <DocumentationCreateDialog projectId={projectId} />}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-4 sm:px-6 sm:pb-6">
+        <div className="shrink-0 space-y-4 pb-4">
+          <DocumentationListFilters
+            search={search}
+            onSearchChange={setSearch}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+          />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 [-webkit-overflow-scrolling:touch]">
+          <DocumentationListSection
+            projectId={projectId}
+            items={items}
+            isLoading={isLoading}
+            page={page}
+            totalPages={totalPages}
+            total={data?.total ?? 0}
+            onPageChange={setPage}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
