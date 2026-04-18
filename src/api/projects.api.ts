@@ -81,15 +81,35 @@ export interface AddProjectMemberDto {
 
 export type ProjectRoleSummary = { role: ProjectMember["role"] };
 
+export type TaskStatus =
+  | "backlog"
+  | "todo"
+  | "in_progress"
+  | "reviewing"
+  | "reviewed"
+  | "done"
+  | "cancelled";
+
+export type TaskPhase = "discovery" | "planning" | "build" | "test" | "release";
+
 export type ProjectTask = {
   id: string;
   projectId: string;
   title: string;
   description?: string | null;
-  status: "todo" | "in_progress" | "blocked" | "done";
+  status: TaskStatus;
   priority: "low" | "medium" | "high" | "urgent";
+  phase?: TaskPhase | null;
   assigneeId?: string | null;
+  assignee?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+  startDate?: string | null;
   dueDate?: string | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -163,13 +183,37 @@ export type ProjectActivity = {
 export type CreateProjectTaskDto = {
   title: string;
   description?: string;
-  status?: ProjectTask["status"];
+  status?: TaskStatus;
   priority?: ProjectTask["priority"];
+  phase?: TaskPhase;
   assigneeId?: string;
+  startDate?: string;
   dueDate?: string;
+  sortOrder?: number;
 };
 
-export type UpdateProjectTaskDto = Partial<CreateProjectTaskDto>;
+export type UpdateProjectTaskDto = {
+  title?: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: ProjectTask["priority"];
+  phase?: TaskPhase | null;
+  assigneeId?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  sortOrder?: number;
+};
+
+export type ReorderProjectTasksDto = {
+  updates: { id: string; sortOrder: number; status?: TaskStatus }[];
+};
+
+export type ListProjectTasksParams = PaginationParams & {
+  status?: TaskStatus;
+  phase?: TaskPhase;
+  assigneeId?: string;
+  search?: string;
+};
 
 export type CreateProjectDocumentationDto = {
   title: string;
@@ -333,12 +377,17 @@ export async function getProjectOverview(projectId: string) {
 
 export async function getProjectTasks(
   projectId: string,
-  params: PaginationParams & { status?: ProjectTask["status"] },
+  params: ListProjectTasksParams,
 ): Promise<PaginatedResponse<ProjectTask>> {
   const response = await apiClient.get<unknown>(
     `${PROJECT_ENDPOINTS.TASKS(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
   );
   return parseResponseData<PaginatedResponse<ProjectTask>>(response);
+}
+
+export async function getProjectTask(projectId: string, taskId: string): Promise<ProjectTask> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.TASK(projectId, taskId));
+  return parseResponseData<ProjectTask>(response);
 }
 
 export async function createProjectTask(
@@ -356,6 +405,14 @@ export async function updateProjectTask(
 ): Promise<ProjectTask> {
   const response = await apiClient.patch<unknown>(PROJECT_ENDPOINTS.TASK(projectId, taskId), data);
   return parseResponseData<ProjectTask>(response);
+}
+
+export async function reorderProjectTasks(
+  projectId: string,
+  data: ReorderProjectTasksDto,
+): Promise<{ success: boolean }> {
+  const response = await apiClient.patch<unknown>(PROJECT_ENDPOINTS.TASKS_REORDER(projectId), data);
+  return parseResponseData<{ success: boolean }>(response);
 }
 
 export async function deleteProjectTask(projectId: string, taskId: string): Promise<void> {

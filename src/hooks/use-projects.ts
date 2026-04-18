@@ -25,7 +25,9 @@ import {
   getProjectRequirements,
   getProjectRole,
   getProjects,
+  getProjectTask,
   getProjectTasks,
+  reorderProjectTasks,
   removeProjectMember,
   updateProject,
   updateProjectDocumentation,
@@ -38,6 +40,7 @@ import {
   type ListProjectDocumentationsParams,
   type CreateProjectRequirementDto,
   type CreateProjectTaskDto,
+  type ListProjectTasksParams,
   type Project,
   type ProjectActivity,
   type ProjectDocumentation,
@@ -48,6 +51,7 @@ import {
   type UpdateProjectDocumentationDto,
   type UpdateProjectDto,
   type UpdateProjectRequirementDto,
+  type ReorderProjectTasksDto,
   type UpdateProjectTaskDto,
 } from "@/api/projects.api";
 import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
@@ -61,8 +65,8 @@ export const projectKeys = {
   role: (id: string) => [...projectKeys.detail(id), "role"] as const,
   overview: (id: string) => [...projectKeys.detail(id), "overview"] as const,
   members: (id: string) => [...projectKeys.detail(id), "members"] as const,
-  tasks: (id: string, params: PaginationParams & { status?: ProjectTask["status"] }) =>
-    [...projectKeys.detail(id), "tasks", params] as const,
+  tasks: (id: string, params: ListProjectTasksParams) => [...projectKeys.detail(id), "tasks", params] as const,
+  task: (projectId: string, taskId: string) => [...projectKeys.detail(projectId), "task", taskId] as const,
   documentations: (id: string, params: ListProjectDocumentationsParams) =>
     [...projectKeys.detail(id), "documentations", params] as const,
   documentation: (projectId: string, documentationId: string) =>
@@ -85,6 +89,15 @@ export function invalidateProjectDocumentationQueries(
   queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
 }
 
+/** Refetch task lists, optional single task, and overview after task CRUD or reorder. */
+export function invalidateProjectTaskQueries(queryClient: QueryClient, projectId: string, taskId?: string) {
+  queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(projectId), "tasks"] });
+  if (taskId) {
+    queryClient.invalidateQueries({ queryKey: projectKeys.task(projectId, taskId) });
+  }
+  queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
+}
+
 export function useProjects(params: PaginationParams & { status?: Project["status"]; search?: string }, options?: Omit<UseQueryOptions<PaginatedResponse<Project>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.list(params), queryFn: () => getProjects(params), ...options });
 }
@@ -100,8 +113,25 @@ export function useProjectOverview(id: string, options?: Omit<UseQueryOptions<Re
 export function useProjectMembers(id: string, options?: Omit<UseQueryOptions<ProjectMember[], Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.members(id), queryFn: () => getProjectMembers(id), enabled: !!id, ...options });
 }
-export function useProjectTasks(id: string, params: PaginationParams & { status?: ProjectTask["status"] }, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectTask>, Error>, "queryKey" | "queryFn">) {
+export function useProjectTasks(
+  id: string,
+  params: ListProjectTasksParams,
+  options?: Omit<UseQueryOptions<PaginatedResponse<ProjectTask>, Error>, "queryKey" | "queryFn">,
+) {
   return useQuery({ queryKey: projectKeys.tasks(id, params), queryFn: () => getProjectTasks(id, params), enabled: !!id, ...options });
+}
+
+export function useProjectTask(
+  projectId: string,
+  taskId: string,
+  options?: Omit<UseQueryOptions<ProjectTask, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.task(projectId, taskId),
+    queryFn: () => getProjectTask(projectId, taskId),
+    enabled: !!projectId && !!taskId,
+    ...options,
+  });
 }
 export function useProjectDocumentations(
   id: string,
@@ -161,7 +191,15 @@ export function useRemoveProjectMember(options?: UseMutationOptions<void, Error,
 }
 export function useCreateProjectTask(options?: UseMutationOptions<ProjectTask, Error, { projectId: string; data: CreateProjectTaskDto }>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ projectId, data }) => createProjectTask(projectId, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(v.projectId), "tasks"] }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => createProjectTask(projectId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectTaskQueries(queryClient, variables.projectId, data.id);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useCreateProjectDocumentation(
   options?: UseMutationOptions<ProjectDocumentation, Error, { projectId: string; data: CreateProjectDocumentationDto }>,
@@ -182,7 +220,31 @@ export function useCreateProjectRequirement(options?: UseMutationOptions<Project
   return useMutation({ mutationFn: ({ projectId, data }) => createProjectRequirement(projectId, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(v.projectId), "requirements"] }), ...options });
 }
 export function useUpdateProjectTask(options?: UseMutationOptions<ProjectTask, Error, { projectId: string; taskId: string; data: UpdateProjectTaskDto }>) {
-  return useMutation({ mutationFn: ({ projectId, taskId, data }) => updateProjectTask(projectId, taskId, data), ...options });
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, taskId, data }) => updateProjectTask(projectId, taskId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectTaskQueries(queryClient, variables.projectId, variables.taskId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useReorderProjectTasks(
+  options?: UseMutationOptions<{ success: boolean }, Error, { projectId: string; data: ReorderProjectTasksDto }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => reorderProjectTasks(projectId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectTaskQueries(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useUpdateProjectDocumentation(
   options?: UseMutationOptions<
@@ -207,7 +269,17 @@ export function useUpdateProjectRequirement(options?: UseMutationOptions<Project
   return useMutation({ mutationFn: ({ projectId, requirementId, data }) => updateProjectRequirement(projectId, requirementId, data), ...options });
 }
 export function useDeleteProjectTask(options?: UseMutationOptions<void, Error, { projectId: string; taskId: string }>) {
-  return useMutation({ mutationFn: ({ projectId, taskId }) => deleteProjectTask(projectId, taskId), ...options });
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, taskId }) => deleteProjectTask(projectId, taskId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.removeQueries({ queryKey: projectKeys.task(variables.projectId, variables.taskId) });
+      invalidateProjectTaskQueries(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useDeleteProjectDocumentation(
   options?: UseMutationOptions<void, Error, { projectId: string; documentationId: string }>,

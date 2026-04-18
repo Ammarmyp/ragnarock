@@ -48,6 +48,7 @@ export const PROJECT_ENDPOINTS = {
   MEMBERS: (projectId: string) => `/projects/${projectId}/members`,
   MEMBER: (projectId: string, userId: string) => `/projects/${projectId}/members/${userId}`,
   TASKS: (projectId: string) => `/projects/${projectId}/tasks`,
+  TASKS_REORDER: (projectId: string) => `/projects/${projectId}/tasks/reorder`,
   TASK: (projectId: string, taskId: string) => `/projects/${projectId}/tasks/${taskId}`,
   DOCUMENTATIONS: (projectId: string) => `/projects/${projectId}/documentations`,
   DOCUMENTATION: (projectId: string, documentationId: string) =>

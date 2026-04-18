@@ -112,12 +112,8 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Main Content — min-h-0 lets nested routes fill viewport height without double scroll */}
-        <main className="flex min-h-0 flex-1 flex-col p-4 pt-2">
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-xl bg-muted/50">
-            {children}
-          </div>
-        </main>
+        {/* Main Content — min-h-0 + overflow-auto: nested routes fill viewport height and scroll here */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-auto p-4 pt-2">{children}</main>
       </SidebarInset>
       </SidebarProvider>
     </DashboardAuthGate>
