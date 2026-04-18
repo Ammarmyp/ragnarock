@@ -43,6 +43,7 @@ import {
   type ListProjectTasksParams,
   type Project,
   type ProjectActivity,
+  type ProjectOverviewResponse,
   type ProjectDocumentation,
   type ProjectMember,
   type ProjectRequirement,
@@ -76,6 +77,10 @@ export const projectKeys = {
   activity: (id: string, params: PaginationParams) => [...projectKeys.detail(id), "activity", params] as const,
 };
 
+export function invalidateProjectOverview(queryClient: QueryClient, projectId: string) {
+  queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
+}
+
 /** Refetch documentation list, optional detail, and project overview after doc CRUD. */
 export function invalidateProjectDocumentationQueries(
   queryClient: QueryClient,
@@ -86,7 +91,7 @@ export function invalidateProjectDocumentationQueries(
   if (documentationId) {
     queryClient.invalidateQueries({ queryKey: projectKeys.documentation(projectId, documentationId) });
   }
-  queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
+  invalidateProjectOverview(queryClient, projectId);
 }
 
 /** Refetch task lists, optional single task, and overview after task CRUD or reorder. */
@@ -95,7 +100,7 @@ export function invalidateProjectTaskQueries(queryClient: QueryClient, projectId
   if (taskId) {
     queryClient.invalidateQueries({ queryKey: projectKeys.task(projectId, taskId) });
   }
-  queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
+  invalidateProjectOverview(queryClient, projectId);
 }
 
 export function useProjects(params: PaginationParams & { status?: Project["status"]; search?: string }, options?: Omit<UseQueryOptions<PaginatedResponse<Project>, Error>, "queryKey" | "queryFn">) {
@@ -107,7 +112,10 @@ export function useProject(id: string, options?: Omit<UseQueryOptions<Project, E
 export function useProjectRole(id: string, options?: Omit<UseQueryOptions<ProjectRoleSummary, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.role(id), queryFn: () => getProjectRole(id), enabled: !!id, ...options });
 }
-export function useProjectOverview(id: string, options?: Omit<UseQueryOptions<Record<string, unknown>, Error>, "queryKey" | "queryFn">) {
+export function useProjectOverview(
+  id: string,
+  options?: Omit<UseQueryOptions<ProjectOverviewResponse, Error>, "queryKey" | "queryFn">,
+) {
   return useQuery({ queryKey: projectKeys.overview(id), queryFn: () => getProjectOverview(id), enabled: !!id, ...options });
 }
 export function useProjectMembers(id: string, options?: Omit<UseQueryOptions<ProjectMember[], Error>, "queryKey" | "queryFn">) {
@@ -179,15 +187,42 @@ export function useDeleteProject(options?: UseMutationOptions<void, Error, strin
 }
 export function useAddProjectMember(options?: UseMutationOptions<ProjectMember, Error, { id: string; data: AddProjectMemberDto }>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ id, data }) => addProjectMember(id, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: projectKeys.members(v.id) }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ id, data }) => addProjectMember(id, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.id) });
+      invalidateProjectOverview(queryClient, variables.id);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useUpdateProjectMemberRole(options?: UseMutationOptions<ProjectMember, Error, { projectId: string; userId: string; role: ProjectMember["role"] }>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ projectId, userId, role }) => updateProjectMemberRole(projectId, userId, role), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: projectKeys.members(v.projectId) }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, userId, role }) => updateProjectMemberRole(projectId, userId, role),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useRemoveProjectMember(options?: UseMutationOptions<void, Error, { projectId: string; userId: string }>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ projectId, userId }) => removeProjectMember(projectId, userId), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: projectKeys.members(v.projectId) }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, userId }) => removeProjectMember(projectId, userId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useCreateProjectTask(options?: UseMutationOptions<ProjectTask, Error, { projectId: string; data: CreateProjectTaskDto }>) {
   const queryClient = useQueryClient();
@@ -217,7 +252,16 @@ export function useCreateProjectDocumentation(
 }
 export function useCreateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; data: CreateProjectRequirementDto }>) {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ projectId, data }) => createProjectRequirement(projectId, data), onSuccess: (_d, v) => queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(v.projectId), "requirements"] }), ...options });
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => createProjectRequirement(projectId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(variables.projectId), "requirements"] });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useUpdateProjectTask(options?: UseMutationOptions<ProjectTask, Error, { projectId: string; taskId: string; data: UpdateProjectTaskDto }>) {
   const queryClient = useQueryClient();
@@ -266,7 +310,17 @@ export function useUpdateProjectDocumentation(
   });
 }
 export function useUpdateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; requirementId: string; data: UpdateProjectRequirementDto }>) {
-  return useMutation({ mutationFn: ({ projectId, requirementId, data }) => updateProjectRequirement(projectId, requirementId, data), ...options });
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, requirementId, data }) => updateProjectRequirement(projectId, requirementId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(variables.projectId), "requirements"] });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }
 export function useDeleteProjectTask(options?: UseMutationOptions<void, Error, { projectId: string; taskId: string }>) {
   const queryClient = useQueryClient();
@@ -297,5 +351,15 @@ export function useDeleteProjectDocumentation(
   });
 }
 export function useDeleteProjectRequirement(options?: UseMutationOptions<void, Error, { projectId: string; requirementId: string }>) {
-  return useMutation({ mutationFn: ({ projectId, requirementId }) => deleteProjectRequirement(projectId, requirementId), ...options });
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, requirementId }) => deleteProjectRequirement(projectId, requirementId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(variables.projectId), "requirements"] });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
 }

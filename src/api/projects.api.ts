@@ -180,6 +180,63 @@ export type ProjectActivity = {
   createdAt: string;
 };
 
+/** Full project payload from GET /projects/:id (Prisma shape). */
+export type ProjectOverviewProject = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: Project["status"];
+  createdAt: string;
+  updatedAt: string;
+  organizationId: string;
+  members: ProjectMember[];
+  _count: { requirements: number; tasks: number; documentations: number };
+};
+
+export type ProjectRequirementWithAuthor = ProjectRequirement & {
+  author?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+};
+
+export type ProjectOverviewRecentDoc = Pick<
+  ProjectDocumentation,
+  "id" | "title" | "type" | "status" | "updatedAt" | "createdAt"
+>;
+
+export type ProjectOverviewResponse = {
+  project: ProjectOverviewProject;
+  organization: { name: string; slug: string } | null;
+  team: ProjectMember[];
+  stats: {
+    totalTasks: number;
+    tasksDone: number;
+    totalRequirements: number;
+    requirementsImplemented: number;
+    totalDocumentations: number;
+    memberCount: number;
+    activitiesLast7Days: number;
+  };
+  tasksByStatus: Record<string, number>;
+  requirementsByStatus: Record<string, number>;
+  activityByEntity: Record<string, number>;
+  progress: {
+    taskCompletionPercent: number;
+    requirementCompletionPercent: number;
+  };
+  highlights: {
+    lastProjectUpdateAt: string;
+    lastDocumentationUpdateAt: string | null;
+    lastActivityAt: string | null;
+  };
+  recentTasks: ProjectTask[];
+  recentRequirements: ProjectRequirementWithAuthor[];
+  recentDocumentations: ProjectOverviewRecentDoc[];
+};
+
 export type CreateProjectTaskDto = {
   title: string;
   description?: string;
@@ -370,9 +427,9 @@ export async function getProjectRole(projectId: string): Promise<ProjectRoleSumm
   return parseResponseData<ProjectRoleSummary>(response);
 }
 
-export async function getProjectOverview(projectId: string) {
+export async function getProjectOverview(projectId: string): Promise<ProjectOverviewResponse> {
   const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.OVERVIEW(projectId));
-  return parseResponseData<Record<string, unknown>>(response);
+  return parseResponseData<ProjectOverviewResponse>(response);
 }
 
 export async function getProjectTasks(
