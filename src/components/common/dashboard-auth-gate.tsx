@@ -13,6 +13,7 @@ const ORG_EXEMPT_PREFIXES = [
   "/dashboard/organization/select",
   "/dashboard/organization/create",
   "/dashboard/accept-invitation",
+  "/profile",
 ];
 
 /**

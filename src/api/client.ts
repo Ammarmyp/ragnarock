@@ -8,7 +8,7 @@ import type { ApiResponse, ApiError } from '@/types';
 import { getBearerToken } from '@/lib/auth/bearer-token';
 
 // Base API URL - configure via environment variable
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
