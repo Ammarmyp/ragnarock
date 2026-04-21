@@ -46,6 +46,7 @@ import { getInitials } from "@/utils/helpers";
 import { authClient } from "@/lib/auth/auth-client";
 import { clearBearerToken } from "@/lib/auth/bearer-token";
 import { clearLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
+import { useProject } from "@/hooks/use-projects";
 import { useProjectWorkspaceStore } from "@/stores/project-workspace.store";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -93,6 +94,10 @@ export function AppSidebar({
   const projectMatch = pathname?.match(/^\/dashboard\/projects\/([^/]+)/);
   const activeProjectId = projectMatch?.[1] ?? null;
   const isProjectWorkspace = Boolean(activeProjectId);
+  const { data: activeProject } = useProject(activeProjectId ?? "", {
+    enabled: Boolean(activeProjectId),
+  });
+  const projectSectionTitle = activeProject?.name?.trim() || "Project Workspace";
   React.useEffect(() => {
     setSelectedProjectId(activeProjectId);
   }, [activeProjectId, setSelectedProjectId]);
@@ -114,14 +119,13 @@ export function AppSidebar({
     const base = `/dashboard/projects/${activeProjectId}`;
     return {
       navGroups: [
-        { title: "Workspace", items: globalItems },
         {
-          title: "Project",
+          title: projectSectionTitle,
           items: [
             { title: "Overview", href: `${base}/overview`, icon: LayoutDashboard },
             { title: "Documentation", href: `${base}/documentation`, icon: FileText },
             { title: "Tasks", href: `${base}/tasks`, icon: ListChecks },
-            { title: "Requirements", href: `${base}/requirements`, icon: ScrollText },
+            { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
             { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare, badge: "Soon", disabled: true },
@@ -130,7 +134,7 @@ export function AppSidebar({
       ],
       footerItems: [],
     };
-  }, [isProjectWorkspace, activeProjectId]);
+  }, [isProjectWorkspace, activeProjectId, projectSectionTitle]);
 
   const handleSignOut = async () => {
     try {
