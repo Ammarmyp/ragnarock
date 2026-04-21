@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/auth-client";
+import { safeDashboardRedirect } from "@/lib/auth/redirect";
 import { cn } from "@/utils/cn";
 
 export function VerifyOtpForm() {
@@ -22,7 +23,7 @@ export function VerifyOtpForm() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const email = searchParams.get("email") ?? "";
   const flow = searchParams.get("flow") ?? "email-verification";
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = safeDashboardRedirect(searchParams.get("redirectTo"));
 
   // Cooldown timer for resend
   useEffect(() => {

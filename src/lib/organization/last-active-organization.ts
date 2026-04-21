@@ -22,3 +22,8 @@ export function getLastActiveOrganizationIdClient(): string | null {
   if (!value) return null;
   return decodeURIComponent(value.slice(key.length));
 }
+
+export function clearLastActiveOrganizationIdClient() {
+  if (typeof document === "undefined") return;
+  document.cookie = `${LAST_ACTIVE_ORGANIZATION_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
+}

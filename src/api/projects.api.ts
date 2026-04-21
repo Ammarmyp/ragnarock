@@ -75,7 +75,8 @@ export interface ProjectMember {
 }
 
 export interface AddProjectMemberDto {
-  userId: string;
+  userId?: string;
+  email?: string;
   role: ProjectMember["role"];
 }
 

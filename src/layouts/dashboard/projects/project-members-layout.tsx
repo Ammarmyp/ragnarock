@@ -3,21 +3,44 @@
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useAddProjectMember, useProjectMembers } from "@/hooks/use-projects";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAddProjectMember, useProjectMembers, useRemoveProjectMember } from "@/hooks/use-projects";
 import { toast } from "@/lib/toast";
 
+const ROLE_OPTIONS = ["owner", "admin", "member", "viewer"] as const;
+
 const memberSchema = z.object({
-  userId: z.string().min(1, "User ID is required"),
-  role: z.string().min(1),
+  email: z.string().email("Valid email is required"),
+  role: z.enum(ROLE_OPTIONS),
 });
 
 export function ProjectMembersLayout({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{
+    userId: string;
+    label: string;
+  } | null>(null);
   const { data } = useProjectMembers(projectId);
   const addMember = useAddProjectMember({
     onSuccess: () => {
@@ -25,9 +48,15 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
       setOpen(false);
     },
   });
+  const removeMember = useRemoveProjectMember({
+    onSuccess: () => {
+      toast.success("Member removed");
+      setMemberToRemove(null);
+    },
+  });
 
   const form = useForm({
-    defaultValues: { userId: "", role: "member" },
+    defaultValues: { email: "", role: "member" },
     validators: { onSubmit: memberSchema },
     onSubmit: async ({ value }) => {
       await addMember.mutateAsync({ id: projectId, data: value as never });
@@ -54,12 +83,12 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
                 form.handleSubmit();
               }}
             >
-              <form.Field name="userId">
+              <form.Field name="email">
                 {(field) => {
                   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                   return (
                     <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>User ID</FieldLabel>
+                      <FieldLabel htmlFor={field.name}>Member Email</FieldLabel>
                       <Input
                         id={field.name}
                         name={field.name}
@@ -67,8 +96,11 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
                         aria-invalid={isInvalid}
+                        placeholder="teammate@company.com"
                       />
-                      <FieldDescription>Use the organization member user id.</FieldDescription>
+                      <FieldDescription>
+                        If the user already has an account, they will be added to this project.
+                      </FieldDescription>
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
@@ -80,15 +112,24 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>Role</FieldLabel>
-                      <Input
-                        id={field.name}
-                        name={field.name}
+                      <Select
                         value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value as "owner" | "admin" | "member" | "viewer")}
-                        aria-invalid={isInvalid}
-                      />
-                      <FieldDescription>Use one of: owner, admin, member, viewer.</FieldDescription>
+                        onValueChange={(value) =>
+                          field.handleChange(value as (typeof ROLE_OPTIONS)[number])
+                        }
+                      >
+                        <SelectTrigger id={field.name} aria-invalid={isInvalid}>
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLE_OPTIONS.map((role) => (
+                            <SelectItem key={role} value={role} className="capitalize">
+                              {role}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>Select the member&apos;s project role.</FieldDescription>
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
@@ -108,10 +149,55 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
               <p className="font-medium">{member.user?.name || member.user?.email || member.userId}</p>
               <p className="text-xs text-muted-foreground">{member.user?.email || member.userId}</p>
             </div>
-            <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
+              {member.role !== "owner" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setMemberToRemove({
+                      userId: member.userId,
+                      label: member.user?.name || member.user?.email || member.userId,
+                    })
+                  }
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
           </div>
         ))}
       </CardContent>
+      <AlertDialog open={memberToRemove !== null} onOpenChange={(openState) => !openState && setMemberToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove project member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToRemove
+                ? `This will remove ${memberToRemove.label} from this project.`
+                : "This will remove the selected member from this project."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeMember.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeMember.isPending || !memberToRemove}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!memberToRemove) return;
+                void removeMember.mutateAsync({
+                  projectId,
+                  userId: memberToRemove.userId,
+                });
+              }}
+            >
+              {removeMember.isPending ? "Removing..." : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

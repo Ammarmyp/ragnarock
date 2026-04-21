@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { authClient } from "@/lib/auth/auth-client";
 import { navigateToOAuthUrl, resolveAuthCallbackUrl } from "@/lib/auth/oauth-redirect";
+import { safeDashboardRedirect } from "@/lib/auth/redirect";
 import { cn } from "@/utils/cn";
 
 export function SignInForm() {
@@ -27,7 +28,7 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = safeDashboardRedirect(searchParams.get("redirectTo"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

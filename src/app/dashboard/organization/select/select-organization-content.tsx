@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { authClient } from "@/lib/auth/auth-client";
+import { safeDashboardRedirect } from "@/lib/auth/redirect";
 import { toast } from "@/lib/toast";
 import { setLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
 import {
@@ -14,16 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-function safeDashboardRedirect(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/dashboard";
-  }
-  if (!raw.startsWith("/dashboard")) {
-    return "/dashboard";
-  }
-  return raw;
-}
 
 export function SelectOrganizationContent() {
   const router = useRouter();
@@ -46,14 +37,18 @@ export function SelectOrganizationContent() {
   ) => Promise<{ data: T; error: unknown }>;
 
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [singleOrgActivationFailed, setSingleOrgActivationFailed] = useState(false);
   const singleOrgAutoActivateStarted = useRef(false);
+  const navigateToDashboard = (target: string) => {
+    window.location.assign(target);
+  };
 
   useEffect(() => {
     if (isActivePending) return;
     if (activeOrganization?.id) {
-      router.replace(redirectTo);
+      navigateToDashboard(redirectTo);
     }
-  }, [activeOrganization?.id, isActivePending, redirectTo, router]);
+  }, [activeOrganization?.id, isActivePending, redirectTo]);
 
   useEffect(() => {
     if (isPending || !organizations) return;
@@ -70,7 +65,7 @@ export function SelectOrganizationContent() {
       router.replace(redirectTo);
       return;
     }
-    if (singleOrgAutoActivateStarted.current) return;
+    if (singleOrgAutoActivateStarted.current || singleOrgActivationFailed) return;
     singleOrgAutoActivateStarted.current = true;
 
     setActivatingId(only.id);
@@ -86,23 +81,22 @@ export function SelectOrganizationContent() {
           body: { organizationId: only.id },
         });
         if (result.error) {
-          singleOrgAutoActivateStarted.current = false;
+          setSingleOrgActivationFailed(true);
           toast.error("Could not activate organization", { id: loadingToast });
           return;
         }
         setLastActiveOrganizationIdClient(only.id);
         toast.success("Workspace ready", { id: loadingToast });
-        router.replace(redirectTo);
-        router.refresh();
+        navigateToDashboard(redirectTo);
       } catch (e) {
         console.error(e);
-        singleOrgAutoActivateStarted.current = false;
+        setSingleOrgActivationFailed(true);
         toast.error("Failed to open workspace");
       } finally {
         setActivatingId(null);
       }
     })();
-  }, [activeOrganization?.id, isPending, organizations, redirectTo, router]);
+  }, [activeOrganization?.id, isPending, organizations, redirectTo, router, singleOrgActivationFailed]);
 
   const handleSelect = async (organizationId: string) => {
     setActivatingId(organizationId);
@@ -118,8 +112,7 @@ export function SelectOrganizationContent() {
       }
       setLastActiveOrganizationIdClient(organizationId);
       toast.success("Organization selected", { id: loadingToast });
-      router.replace(redirectTo);
-      router.refresh();
+      navigateToDashboard(redirectTo);
     } catch (e) {
       console.error(e);
       toast.error("Failed to select organization");
@@ -145,13 +138,13 @@ export function SelectOrganizationContent() {
       {isPending && (
         <p className="text-muted-foreground text-sm">Loading organizations…</p>
       )}
-      {!isPending && !error && orgCount === 1 && (
+      {!isPending && !error && orgCount === 1 && !singleOrgActivationFailed && (
         <div className="flex flex-col items-center gap-2 text-center">
           <Building2 className="text-muted-foreground size-8" />
           <p className="text-muted-foreground text-sm">Opening your workspace…</p>
         </div>
       )}
-      {showMultiOrgChooser && (
+      {(showMultiOrgChooser || (orgCount === 1 && singleOrgActivationFailed)) && (
         <Card className="w-full max-w-lg">
           <CardHeader>
             <div className="mb-2 flex items-center gap-2 text-primary">
@@ -160,8 +153,7 @@ export function SelectOrganizationContent() {
             </div>
             <CardTitle>Select an organization</CardTitle>
             <CardDescription>
-              You belong to multiple organizations. Pick one to continue, or we will remember your
-              choice for next time.
+              Pick one to continue, or we will remember your choice for next time.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">

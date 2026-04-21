@@ -29,6 +29,7 @@ export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   const hasSessionHint = request.cookies.get("ba_session_hint")?.value === "1";
   const hasAuthSignal = Boolean(sessionCookie || hasSessionHint);
+  const hasVerifiedSession = Boolean(sessionCookie);
 
   if ((pathname.startsWith("/dashboard") || pathname === "/profile") && !hasAuthSignal) {
     const signInUrl = new URL("/sign-in", request.url);
@@ -36,7 +37,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
-  if (hasAuthSignal && isAuthPage(pathname)) {
+  // Do not bounce from auth pages based only on the client-side hint cookie.
+  if (hasVerifiedSession && isAuthPage(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

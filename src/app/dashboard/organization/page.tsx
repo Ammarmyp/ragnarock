@@ -74,6 +74,7 @@ export default function OrganizationPage() {
     authClient.useActiveOrganization();
   const { data: activeMemberRole } = authClient.useActiveMemberRole();
   const { data: session } = authClient.useSession();
+  const sessionUserId = session?.user?.id;
 
   const activeOrganizationId = activeOrganization?.id;
   const canManageTeams =
@@ -145,9 +146,17 @@ export default function OrganizationPage() {
     [organizationName],
   );
 
-  const refreshOrganizationData = async () => {
+  const refreshOrganizationData = useCallback(async () => {
     await Promise.all([refetchOrganizations(), refetchActiveOrganization()]);
-  };
+  }, [refetchOrganizations, refetchActiveOrganization]);
+
+  useEffect(() => {
+    setSelectedTeamId("");
+    setMemberToAddUserId("");
+    setTeamMembers([]);
+    setPendingInvitations([]);
+    void refreshOrganizationData();
+  }, [refreshOrganizationData, sessionUserId]);
 
   const loadInvitations = useCallback(async () => {
     if (!activeOrganizationId || !canInviteMembers) {

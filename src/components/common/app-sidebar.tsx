@@ -7,7 +7,8 @@
  */
 
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ChevronsUpDown, FileText, FolderKanban, LayoutDashboard, ListChecks, LogOut, MessageSquare, Palette, ScrollText, User, Users } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -44,6 +45,7 @@ import type { UserRole } from "@/types";
 import { getInitials } from "@/utils/helpers";
 import { authClient } from "@/lib/auth/auth-client";
 import { clearBearerToken } from "@/lib/auth/bearer-token";
+import { clearLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
 import { useProjectWorkspaceStore } from "@/stores/project-workspace.store";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -77,7 +79,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   void _userRole;
   const pathname = usePathname();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const { theme, setTheme } = useTheme();
 
@@ -139,8 +141,10 @@ export function AppSidebar({
         return;
       }
       clearBearerToken();
+      clearLastActiveOrganizationIdClient();
+      queryClient.clear();
       toast.success("Logged out", { id: loadingToast });
-      router.replace("/sign-in");
+      window.location.assign("/sign-in");
     } catch (error) {
       console.error("Sign out failed", error);
       toast.error("Failed to log out");
