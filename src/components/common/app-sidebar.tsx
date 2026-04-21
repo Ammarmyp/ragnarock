@@ -104,7 +104,6 @@ export function AppSidebar({
 
   const config = React.useMemo(() => {
     const globalItems = [
-      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "Projects", href: "/dashboard/projects", icon: FolderKanban },
       { title: "Organization", href: "/dashboard/organization", icon: Users },
     ];
@@ -159,8 +158,8 @@ export function AppSidebar({
    * Checks if a path is currently active
    */
   const isActivePath = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard" || pathname === "/";
+    if (href === "/dashboard/projects") {
+      return pathname === "/dashboard/projects" || pathname === "/dashboard";
     }
     return pathname?.startsWith(href);
   };
@@ -172,7 +171,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href="/dashboard/projects">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FolderKanban, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { FolderKanban, Info, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Menubar,
   MenubarContent,
@@ -20,83 +20,90 @@ type ProjectListCardProps = {
   onDeleteRequest: (project: Project) => void;
 };
 
+const statusCopy: Record<Project["status"], string> = {
+  active: "Project is active",
+  archived: "Project is archived",
+  completed: "Project is completed",
+};
+
 export function ProjectListCard({ project, onEdit, onDeleteRequest }: ProjectListCardProps) {
   return (
     <Card
       className={cn(
-        "group border-border/80 bg-card shadow-sm transition-[border-color,box-shadow]",
-        "hover:border-border hover:shadow-md",
+        "group overflow-hidden rounded-xl border-border/60 bg-card/90 shadow-sm ring-1 ring-black/5 transition-[border-color,box-shadow] dark:ring-white/10",
+        "hover:border-border/90 hover:shadow-md",
       )}
     >
-      <CardHeader className="space-y-3 pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Menubar className="h-auto border-0 bg-transparent p-0 shadow-none">
-              <MenubarMenu>
-                <MenubarTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground hover:text-foreground size-8 shrink-0"
-                    aria-label={`Actions for ${project.name}`}
-                  >
-                    <MoreVertical className="size-4" />
-                  </Button>
-                </MenubarTrigger>
-                <MenubarContent align="start" className="min-w-[10.5rem]">
-                  <MenubarItem
-                    className="cursor-pointer"
-                    onSelect={() => {
-                      onEdit(project);
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                    Edit project
-                  </MenubarItem>
-                  <MenubarItem
-                    variant="destructive"
-                    className="cursor-pointer"
-                    onSelect={() => {
-                      onDeleteRequest(project);
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                    Delete project
-                  </MenubarItem>
-                </MenubarContent>
-              </MenubarMenu>
-            </Menubar>
+      <CardHeader className="space-y-0 pb-3">
+        <div className="flex flex-row items-start gap-3">
+          <div className="bg-muted/60 flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-border/40">
+            <FolderKanban className="text-muted-foreground size-[18px]" />
           </div>
-          <span className="text-muted-foreground rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-            {project.status}
-          </span>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="bg-muted/80 flex size-9 shrink-0 items-center justify-center rounded-md">
-            <FolderKanban className="text-muted-foreground size-4" />
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className="text-lg leading-snug">{project.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
-              {project.description?.trim() ? project.description : "No description"}
-            </CardDescription>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-base font-semibold leading-snug tracking-tight">
+                {project.name}
+              </CardTitle>
+              <div className="shrink-0 -mr-1 -mt-0.5" onClick={(e) => e.stopPropagation()}>
+                <Menubar className="h-auto border-0 bg-transparent p-0 shadow-none">
+                  <MenubarMenu>
+                    <MenubarTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-muted-foreground hover:text-foreground size-8"
+                        aria-label={`Actions for ${project.name}`}
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </MenubarTrigger>
+                    <MenubarContent align="end" className="min-w-[10.5rem]">
+                      <MenubarItem
+                        className="cursor-pointer"
+                        onSelect={() => {
+                          onEdit(project);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                        Edit project
+                      </MenubarItem>
+                      <MenubarItem
+                        variant="destructive"
+                        className="cursor-pointer"
+                        onSelect={() => {
+                          onDeleteRequest(project);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete project
+                      </MenubarItem>
+                    </MenubarContent>
+                  </MenubarMenu>
+                </Menubar>
+              </div>
+            </div>
+            <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
+              {project.description?.trim() ? project.description : "No description yet"}
+            </p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex items-center justify-between border-t border-border/60 pt-4">
-        <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
-          <span>
-            {project.memberCount} member{project.memberCount === 1 ? "" : "s"}
-          </span>
-          <span>
-            {project.requirementCount} requirement
+      <CardContent className="flex flex-col gap-3 border-t border-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between sm:pt-3.5">
+        <div className="text-muted-foreground flex min-w-0 flex-1 items-center gap-2 rounded-md bg-muted/35 px-2.5 py-1.5 text-xs ring-1 ring-border/30">
+          <Info className="text-muted-foreground/80 size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{statusCopy[project.status]}</span>
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+          <span className="text-muted-foreground text-[11px] tabular-nums whitespace-nowrap">
+            {project.memberCount} member{project.memberCount === 1 ? "" : "s"} ·{" "}
+            {project.requirementCount} req
             {project.requirementCount === 1 ? "" : "s"}
           </span>
+          <Button asChild size="sm" className="shrink-0 font-medium">
+            <Link href={`/dashboard/projects/${project.id}/overview`}>Open</Link>
+          </Button>
         </div>
-        <Button asChild size="sm" className="shrink-0">
-          <Link href={`/dashboard/projects/${project.id}/overview`}>Open</Link>
-        </Button>
       </CardContent>
     </Card>
   );

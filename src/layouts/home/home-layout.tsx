@@ -46,10 +46,10 @@ export function HomeLayout({ children }: HomeLayoutProps) {
 
           <nav className="flex items-center gap-4">
             <Link
-              href="/dashboard"
+              href="/dashboard/projects"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              Dashboard
+              Projects
             </Link>
             <Link
               href="/sign-in"

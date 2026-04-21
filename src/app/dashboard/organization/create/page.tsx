@@ -41,7 +41,7 @@ export default function CreateOrganizationOnboardingPage() {
 
   useEffect(() => {
     if (!isActiveOrgPending && activeOrganization?.id) {
-      router.replace("/dashboard");
+      router.replace("/dashboard/projects");
     }
   }, [activeOrganization?.id, isActiveOrgPending, router]);
 
@@ -81,7 +81,7 @@ export default function CreateOrganizationOnboardingPage() {
       }
 
       // Explicitly set the just-created organization as active for this session
-      // before navigating, so the proxy can route to /dashboard immediately.
+      // before navigating, so the app can land on /dashboard/projects immediately.
       const setActiveResult = await authFetch<{ success: boolean }>("/organization/set-active", {
         method: "POST",
         body: { organizationId: result.data.id },
@@ -93,7 +93,7 @@ export default function CreateOrganizationOnboardingPage() {
 
       setLastActiveOrganizationIdClient(result.data.id);
       toast.success("Organization created", { id: loadingToast });
-      router.replace("/dashboard");
+      router.replace("/dashboard/projects");
       router.refresh();
     } catch (error) {
       console.error("Organization creation failed", error);

@@ -89,7 +89,7 @@ export function DashboardAuthGate({ children }: { children: React.ReactNode }) {
     if (restoreFailed) {
       clearLastActiveOrganizationIdClient();
     }
-    const redirectTo = encodeURIComponent(pathname ?? "/dashboard");
+    const redirectTo = encodeURIComponent(pathname ?? "/dashboard/projects");
     router.replace(`/dashboard/organization/select?redirectTo=${redirectTo}`);
   }, [activeLoading, activeOrganization?.id, isExempt, pathname, restoreAttemptFinished, restoreFailed, router]);
 

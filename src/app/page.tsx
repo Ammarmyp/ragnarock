@@ -27,7 +27,7 @@ export default function HomePage() {
           </p>
           <div className="flex gap-4">
             <Button size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href="/dashboard/projects">
                 Get Started
                 <ArrowRight className="ml-2 size-4" />
               </Link>
@@ -100,7 +100,7 @@ export default function HomePage() {
             requirements and ship better products.
           </p>
           <Button size="lg" asChild>
-            <Link href="/dashboard">
+            <Link href="/dashboard/projects">
               Start Managing Requirements
               <ArrowRight className="ml-2 size-4" />
             </Link>

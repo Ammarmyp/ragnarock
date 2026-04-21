@@ -31,8 +31,8 @@ export const sidebarConfig: SidebarConfig = {
       title: "Overview",
       items: [
         {
-          title: "Dashboard",
-          href: "/dashboard",
+          title: "Projects",
+          href: "/dashboard/projects",
           icon: LayoutDashboard,
           roles: ["admin", "manager", "user", "viewer"],
         },

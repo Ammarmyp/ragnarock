@@ -8,7 +8,7 @@
  * Gates:
  * - `/dashboard/*` requires a session cookie; otherwise redirect to /sign-in.
  * - `/sign-in`, `/sign-up`, `/verify-otp`, `/forgot-password`: if already
- *   signed in, bounce to /dashboard.
+ *   signed in, bounce to /dashboard/projects.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
@@ -39,7 +39,7 @@ export function proxy(request: NextRequest) {
 
   // Do not bounce from auth pages based only on the client-side hint cookie.
   if (hasVerifiedSession && isAuthPage(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard/projects", request.url));
   }
 
   return NextResponse.next();

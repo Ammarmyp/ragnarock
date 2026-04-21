@@ -100,7 +100,7 @@ export function AcceptInvitationContent() {
         setLastActiveOrganizationIdClient(orgId);
       }
       toast.success("You joined the organization", { id: loadingToast });
-      router.replace("/dashboard");
+      router.replace("/dashboard/projects");
       router.refresh();
     } catch (e) {
       console.error(e);
@@ -124,7 +124,7 @@ export function AcceptInvitationContent() {
         return;
       }
       toast.success("Invitation declined", { id: loadingToast });
-      router.replace("/dashboard");
+      router.replace("/dashboard/projects");
       router.refresh();
     } catch (e) {
       console.error(e);
@@ -144,7 +144,7 @@ export function AcceptInvitationContent() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
+              <Link href="/dashboard/projects">Back to projects</Link>
             </Button>
           </CardContent>
         </Card>
@@ -206,7 +206,7 @@ export function AcceptInvitationContent() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
+              <Link href="/dashboard/projects">Back to projects</Link>
             </Button>
           </CardContent>
         </Card>

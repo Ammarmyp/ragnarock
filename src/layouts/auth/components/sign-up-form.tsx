@@ -73,7 +73,7 @@ export function SignUpForm() {
     setIsLoading(true);
     try {
       const loadingToast = toast.loading("Redirecting...");
-      const callbackURL = resolveAuthCallbackUrl("/dashboard");
+      const callbackURL = resolveAuthCallbackUrl("/dashboard/projects");
       const result = await authClient.signIn.social({
         provider,
         callbackURL,

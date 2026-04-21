@@ -48,10 +48,22 @@ function useBreadcrumbs() {
 
   return React.useMemo(() => {
     if (!pathname || pathname === "/" || pathname === "/dashboard") {
-      return [{ label: "Dashboard", href: "/dashboard" }];
+      return [{ label: "Projects", href: "/dashboard/projects" }];
     }
 
     const segments = pathname.split("/").filter(Boolean);
+    if (segments[0] === "dashboard" && segments.length > 1) {
+      const sub = segments.slice(1);
+      return sub.map((segment, index) => {
+        const href = "/dashboard/" + sub.slice(0, index + 1).join("/");
+        const label = segment
+          .split("-")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+        return { label, href };
+      });
+    }
+
     const breadcrumbs = segments.map((segment, index) => {
       const href = "/" + segments.slice(0, index + 1).join("/");
       const label = segment
