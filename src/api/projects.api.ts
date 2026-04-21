@@ -174,11 +174,22 @@ export type ProjectActivity = {
   id: string;
   projectId: string;
   actorId?: string | null;
+  actor?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
   action: string;
   entityType: string;
   entityId?: string | null;
   metadata?: Record<string, unknown> | null;
   createdAt: string;
+};
+
+export type ListProjectActivityParams = PaginationParams & {
+  search?: string;
+  entityType?: string;
+  action?: string;
 };
 
 /** Full project payload from GET /projects/:id (Prisma shape). */
@@ -557,7 +568,7 @@ export async function deleteProjectRequirement(projectId: string, requirementId:
 
 export async function getProjectActivity(
   projectId: string,
-  params: PaginationParams,
+  params: ListProjectActivityParams,
 ): Promise<PaginatedResponse<ProjectActivity>> {
   const response = await apiClient.get<unknown>(
     `${PROJECT_ENDPOINTS.ACTIVITY(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,

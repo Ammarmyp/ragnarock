@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { ProjectMember, ProjectTask, TaskStatus } from "@/api/projects.api";
 import { TaskPriorityIconAccent } from "@/lib/task-priority-icons";
 import {
+  TASK_PHASE_LABELS,
+  TASK_PHASE_ORDER,
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_ORDER,
   TASK_STATUS_LABELS,
@@ -198,6 +200,113 @@ export function TaskListPriorityMenu({
   );
 }
 
+export function TaskListPhaseMenu({
+  value,
+  disabled,
+  onCommit,
+  fullWidth,
+}: {
+  value: ProjectTask["phase"] | null | undefined;
+  disabled?: boolean;
+  onCommit: (phase: ProjectTask["phase"] | null) => void;
+  fullWidth?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return [...TASK_PHASE_ORDER];
+    return TASK_PHASE_ORDER.filter((p) => TASK_PHASE_LABELS[p].toLowerCase().includes(s));
+  }, [q]);
+
+  const current = value ?? null;
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setQ("");
+      }}
+    >
+      <div onPointerDown={stopDrag}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(triggerClassName, fullWidth ? "h-9 w-full max-w-none justify-between px-3 text-sm" : "max-w-[7.5rem]")}
+            aria-label="Change phase"
+          >
+            <span className="max-w-[5.2rem] truncate">
+              {current ? TASK_PHASE_LABELS[current] : "No phase"}
+            </span>
+          </button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className={menuSurfaceClass}
+        onPointerDown={stopDrag}
+      >
+        <div className="border-border/50 border-b px-2 py-2">
+          <div className="relative">
+            <Search
+              className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 opacity-80"
+              aria-hidden
+            />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search"
+              className="border-border/60 bg-muted/25 h-8 rounded-md pl-8 text-xs"
+              autoComplete="off"
+            />
+          </div>
+        </div>
+        <div className="max-h-[min(220px,40vh)] overflow-y-auto p-1">
+          <button
+            type="button"
+            className={cn(
+              "hover:bg-muted/45 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
+              !current && "bg-muted/35",
+            )}
+            onClick={() => {
+              if (current) onCommit(null);
+              setOpen(false);
+              setQ("");
+            }}
+          >
+            <span className="min-w-0 flex-1 truncate">No phase</span>
+            {!current ? <Check className="text-muted-foreground size-3.5 shrink-0" aria-hidden /> : null}
+          </button>
+          {filtered.map((phase) => {
+            const selected = phase === current;
+            return (
+              <button
+                key={phase}
+                type="button"
+                className={cn(
+                  "hover:bg-muted/45 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
+                  selected && "bg-muted/35",
+                )}
+                onClick={() => {
+                  if (phase !== current) onCommit(phase);
+                  setOpen(false);
+                  setQ("");
+                }}
+              >
+                <span className="min-w-0 flex-1 truncate">{TASK_PHASE_LABELS[phase]}</span>
+                {selected ? <Check className="text-muted-foreground size-3.5 shrink-0" aria-hidden /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function memberLabel(m: ProjectMember) {
   return m.user?.name?.trim() || m.user?.email || m.userId;
 }
@@ -208,12 +317,14 @@ export function TaskListAssigneeMenu({
   members,
   disabled,
   onCommit,
+  fullWidth,
 }: {
   assigneeId: string | null | undefined;
   assignee: ProjectTask["assignee"];
   members: ProjectMember[];
   disabled?: boolean;
   onCommit: (userId: string | null) => void;
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -247,7 +358,10 @@ export function TaskListAssigneeMenu({
             size="sm"
             disabled={disabled}
             className={cn(
-              "border-border/55 bg-muted/20 hover:bg-muted/40 h-7 w-7 shrink-0 rounded-md border p-0 shadow-xs",
+              "border-border/55 bg-muted/20 hover:bg-muted/40 rounded-md border shadow-xs",
+              fullWidth
+                ? "h-9 w-full justify-start px-2.5"
+                : "h-7 w-7 shrink-0 p-0",
               "focus-visible:ring-border/70 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             )}
             aria-label="Change assignee"
@@ -257,6 +371,7 @@ export function TaskListAssigneeMenu({
               {assignee?.image ? <AvatarImage src={assignee.image} alt="" /> : null}
               <AvatarFallback className="text-[9px] font-medium">{currentLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
+            {fullWidth ? <span className="ml-2 min-w-0 truncate text-sm">{currentLabel}</span> : null}
           </Button>
         </PopoverTrigger>
       </div>

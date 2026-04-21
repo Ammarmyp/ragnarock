@@ -1,9 +1,8 @@
 "use client";
 
-import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
-import { useCreateProjectTask, useProjectMembers } from "@/hooks/use-projects";
-import type { TaskPhase, TaskStatus } from "@/api/projects.api";
-import { toast } from "@/lib/toast";
+import { TaskDetailDialog } from "@/components/tasks/task-detail-dialog";
+import { useProjectMembers } from "@/hooks/use-projects";
+import type { TaskStatus } from "@/api/projects.api";
 
 type TaskCreateDialogProps = {
   projectId: string;
@@ -14,43 +13,18 @@ type TaskCreateDialogProps = {
 };
 
 export function TaskCreateDialog({ projectId, open, onOpenChange, canSubmit, initialStatus }: TaskCreateDialogProps) {
+  void canSubmit;
   const { data: members = [] } = useProjectMembers(projectId);
 
-  const createTask = useCreateProjectTask({
-    onSuccess: () => {
-      toast.success("Task created");
-      onOpenChange(false);
-    },
-    onError: (e) => {
-      toast.error(e.message || "Could not create task");
-    },
-  });
-
   return (
-    <TaskFormDialog
+    <TaskDetailDialog
       open={open}
       onOpenChange={onOpenChange}
       projectId={projectId}
       members={members}
+      task={null}
       mode="create"
       initialCreateStatus={initialStatus}
-      canSubmit={canSubmit}
-      isPending={createTask.isPending}
-      onSubmit={async (value) => {
-        await createTask.mutateAsync({
-          projectId,
-          data: {
-            title: value.title,
-            description: value.description.trim() || undefined,
-            status: value.status,
-            priority: value.priority,
-            phase: value.phase ? (value.phase as TaskPhase) : undefined,
-            assigneeId: value.assigneeId || undefined,
-            startDate: value.startDate || undefined,
-            dueDate: value.dueDate || undefined,
-          },
-        });
-      }}
     />
   );
 }

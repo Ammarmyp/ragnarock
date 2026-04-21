@@ -40,6 +40,7 @@ import {
   type ListProjectDocumentationsParams,
   type CreateProjectRequirementDto,
   type CreateProjectTaskDto,
+  type ListProjectActivityParams,
   type ListProjectTasksParams,
   type Project,
   type ProjectActivity,
@@ -169,7 +170,7 @@ export function useProjectDocumentation(
 export function useProjectRequirements(id: string, params: PaginationParams & { status?: ProjectRequirement["status"] }, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectRequirement>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.requirements(id, params), queryFn: () => getProjectRequirements(id, params), enabled: !!id, ...options });
 }
-export function useProjectActivity(id: string, params: PaginationParams, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectActivity>, Error>, "queryKey" | "queryFn">) {
+export function useProjectActivity(id: string, params: ListProjectActivityParams, options?: Omit<UseQueryOptions<PaginatedResponse<ProjectActivity>, Error>, "queryKey" | "queryFn">) {
   return useQuery({ queryKey: projectKeys.activity(id, params), queryFn: () => getProjectActivity(id, params), enabled: !!id, ...options });
 }
 

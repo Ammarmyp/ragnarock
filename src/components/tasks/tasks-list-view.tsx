@@ -26,7 +26,6 @@ import { SortableTaskCard } from "@/components/tasks/sortable-task-card";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { TaskDeleteDialog } from "@/components/tasks/task-delete-dialog";
 import { TaskDetailDialog } from "@/components/tasks/task-detail-dialog";
-import { TaskEditDialogTrigger } from "@/components/tasks/task-edit-dialog";
 import { applyKanbanDrag, tasksToColumnItems, updatesFromKanbanColumns } from "@/lib/tasks-reorder";
 import type { ProjectTask, TaskPhase, TaskStatus } from "@/api/projects.api";
 import { TASK_STATUS_LABELS, TASK_STATUS_ORDER } from "@/lib/task-labels";
@@ -139,7 +138,6 @@ export function TasksListView({ projectId }: TasksListViewProps) {
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
 
   const [viewing, setViewing] = useState<ProjectTask | null>(null);
-  const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ProjectTask | null>(null);
   const [createForStatus, setCreateForStatus] = useState<TaskStatus | null>(null);
 
@@ -231,7 +229,7 @@ export function TasksListView({ projectId }: TasksListViewProps) {
                         variant="list"
                         canEdit={canEdit}
                         onOpen={() => setViewing(task)}
-                        onEdit={() => setEditing(task)}
+                        onEdit={() => setViewing(task)}
                         onDelete={canDelete ? () => setPendingDelete(task) : undefined}
                       />
                     ))}
@@ -268,13 +266,12 @@ export function TasksListView({ projectId }: TasksListViewProps) {
         onConfirm={confirmDelete}
       />
       <TaskDetailDialog
+        projectId={projectId}
         task={viewing}
+        members={members}
         open={!!viewing}
         onOpenChange={(o) => !o && setViewing(null)}
-        canEdit={canEdit}
-        onEdit={(t) => setEditing(t)}
       />
-      <TaskEditDialogTrigger projectId={projectId} task={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />
     </>
   );
 }

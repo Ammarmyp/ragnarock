@@ -26,7 +26,6 @@ import { useTasksWorkspaceStore } from "@/stores/tasks-workspace.store";
 import { SortableTaskCard } from "@/components/tasks/sortable-task-card";
 import { TaskDeleteDialog } from "@/components/tasks/task-delete-dialog";
 import { TaskDetailDialog } from "@/components/tasks/task-detail-dialog";
-import { TaskEditDialogTrigger } from "@/components/tasks/task-edit-dialog";
 import {
   applyKanbanDrag,
   tasksToColumnItems,
@@ -210,7 +209,6 @@ export function TasksKanbanView({ projectId }: TasksKanbanViewProps) {
   const deleteTask = useDeleteProjectTask();
 
   const [viewing, setViewing] = useState<ProjectTask | null>(null);
-  const [editing, setEditing] = useState<ProjectTask | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ProjectTask | null>(null);
   const [activeTask, setActiveTask] = useState<ProjectTask | null>(null);
   const [overColumnId, setOverColumnId] = useState<TaskStatus | null>(null);
@@ -311,7 +309,7 @@ export function TasksKanbanView({ projectId }: TasksKanbanViewProps) {
               isDragActive={!!activeTask}
               isSourceColumn={!!activeTask && activeTask.status === status}
               onOpen={setViewing}
-              onEdit={setEditing}
+              onEdit={setViewing}
               onRequestDelete={setPendingDelete}
             />
           ))}
@@ -335,13 +333,12 @@ export function TasksKanbanView({ projectId }: TasksKanbanViewProps) {
         onConfirm={confirmDelete}
       />
       <TaskDetailDialog
+        projectId={projectId}
         task={viewing}
+        members={members}
         open={!!viewing}
         onOpenChange={(o) => !o && setViewing(null)}
-        canEdit={canEdit}
-        onEdit={(t) => setEditing(t)}
       />
-      <TaskEditDialogTrigger projectId={projectId} task={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />
     </div>
   );
 }
