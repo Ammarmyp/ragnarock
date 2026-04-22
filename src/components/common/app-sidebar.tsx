@@ -8,15 +8,24 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ChevronsUpDown, FileText, FolderKanban, LayoutDashboard, ListChecks, LogOut, MessageSquare, Palette, ScrollText, User, Users } from "lucide-react";
-import { useTheme } from "next-themes";
-import { toast } from "@/lib/toast";
+import {
+  ArrowLeft,
+  FileText,
+  FolderKanban,
+  KeyRound,
+  LayoutDashboard,
+  ListChecks,
+  MessageSquare,
+  Plug,
+  ScrollText,
+  SlidersHorizontal,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -26,26 +35,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { UserRole } from "@/types";
-import { getInitials } from "@/utils/helpers";
-import { authClient } from "@/lib/auth/auth-client";
-import { clearBearerToken } from "@/lib/auth/bearer-token";
-import { clearLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectWorkspaceStore } from "@/stores/project-workspace.store";
 
@@ -55,15 +46,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
    * When auth is implemented, this will come from auth context
    */
   userRole?: UserRole;
-
-  /**
-   * Current user data for display in footer
-   */
-  user?: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
 }
 
 /**
@@ -72,23 +54,11 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
  */
 export function AppSidebar({
   userRole: _userRole = "user",
-  user = {
-    name: "Demo User",
-    email: "demo@example.com",
-  },
   ...props
 }: AppSidebarProps) {
   void _userRole;
   const pathname = usePathname();
-  const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
-  const { theme, setTheme } = useTheme();
-
-  const resolvedUser = {
-    name: session?.user?.name || user.name,
-    email: session?.user?.email || user.email,
-    avatar: session?.user?.image || user.avatar,
-  };
+  const isAccountRoute = Boolean(pathname?.startsWith("/account"));
 
   const setSelectedProjectId = useProjectWorkspaceStore((state) => state.setSelectedProjectId);
   const projectMatch = pathname?.match(/^\/dashboard\/projects\/([^/]+)/);
@@ -103,8 +73,25 @@ export function AppSidebar({
   }, [activeProjectId, setSelectedProjectId]);
 
   const config = React.useMemo(() => {
+    if (isAccountRoute) {
+      return {
+        navGroups: [
+          {
+            title: "Account",
+            items: [
+              { title: "Back to workspace", href: "/dashboard/projects", icon: ArrowLeft },
+              { title: "Preferences", href: "/account/preferences", icon: SlidersHorizontal },
+              { title: "Security", href: "/account/security", icon: KeyRound },
+            ],
+          },
+        ],
+        footerItems: [],
+      };
+    }
+
     const globalItems = [
       { title: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+      { title: "Integrations", href: "/dashboard/organization/integrations", icon: Plug },
       { title: "Organization", href: "/dashboard/organization", icon: Users },
     ];
 
@@ -123,6 +110,7 @@ export function AppSidebar({
           items: [
             { title: "Overview", href: `${base}/overview`, icon: LayoutDashboard },
             { title: "Documentation", href: `${base}/documentation`, icon: FileText },
+            { title: "Skills", href: `${base}/skills`, icon: Sparkles },
             { title: "Tasks", href: `${base}/tasks`, icon: ListChecks },
             { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
@@ -133,26 +121,7 @@ export function AppSidebar({
       ],
       footerItems: [],
     };
-  }, [isProjectWorkspace, activeProjectId, projectSectionTitle]);
-
-  const handleSignOut = async () => {
-    try {
-      const loadingToast = toast.loading("Logging out...");
-      const result = await authClient.signOut();
-      if (result.error) {
-        toast.error("Could not log out", { id: loadingToast });
-        return;
-      }
-      clearBearerToken();
-      clearLastActiveOrganizationIdClient();
-      queryClient.clear();
-      toast.success("Logged out", { id: loadingToast });
-      window.location.assign("/sign-in");
-    } catch (error) {
-      console.error("Sign out failed", error);
-      toast.error("Failed to log out");
-    }
-  };
+  }, [isAccountRoute, isProjectWorkspace, activeProjectId, projectSectionTitle]);
 
   /**
    * Checks if a path is currently active
@@ -160,6 +129,20 @@ export function AppSidebar({
   const isActivePath = (href: string) => {
     if (href === "/dashboard/projects") {
       return pathname === "/dashboard/projects" || pathname === "/dashboard";
+    }
+    if (href === "/dashboard/organization") {
+      return pathname === "/dashboard/organization" || pathname === "/dashboard/organization/";
+    }
+    if (href === "/account/preferences") {
+      return (
+        pathname === "/account" ||
+        pathname === "/account/" ||
+        pathname === "/account/preferences" ||
+        Boolean(pathname?.startsWith("/account/preferences/"))
+      );
+    }
+    if (href === "/account/security") {
+      return pathname === "/account/security" || Boolean(pathname?.startsWith("/account/security/"));
     }
     return pathname?.startsWith(href);
   };
@@ -189,7 +172,7 @@ export function AppSidebar({
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Ragnarock</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Requirements Management
+                    SDLC Automation
                   </span>
                 </div>
               </Link>
@@ -238,91 +221,6 @@ export function AppSidebar({
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      {/* Sidebar Footer */}
-      <SidebarFooter>
-        {/* User Profile Dropdown */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={resolvedUser.avatar} alt={resolvedUser.name} />
-                    <AvatarFallback className="rounded-lg">
-                      {getInitials(resolvedUser.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{resolvedUser.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {resolvedUser.email}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={resolvedUser.avatar} alt={resolvedUser.name} />
-                      <AvatarFallback className="rounded-lg">
-                        {getInitials(resolvedUser.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{resolvedUser.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {resolvedUser.email}
-                      </span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile" className="cursor-pointer">
-                    <User className="mr-2 size-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Palette className="mr-2 size-4" />
-                    Theme
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup
-                      value={theme ?? "system"}
-                      onValueChange={setTheme}
-                    >
-                      <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="mr-2 size-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

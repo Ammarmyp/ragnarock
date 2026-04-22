@@ -19,8 +19,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { AppSidebar } from "@/components/common/app-sidebar";
+import { DashboardHeaderActions } from "@/components/common/dashboard-header-actions";
 import { DashboardAuthGate } from "@/components/common/dashboard-auth-gate";
 import { OrganizationScopedQuerySync } from "@/components/common/organization-scoped-query-sync";
+import { useProject } from "@/hooks/use-projects";
 import type { UserRole } from "@/types";
 
 interface DashboardLayoutProps {
@@ -40,11 +42,24 @@ interface DashboardLayoutProps {
   };
 }
 
+function segmentToTitle(segment: string): string {
+  return segment
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 /**
- * Generates breadcrumbs from the current pathname
+ * Breadcrumbs from pathname; under `/dashboard/projects/:projectId/...` the project segment shows the fetched project name.
  */
-function useBreadcrumbs() {
+function useDashboardBreadcrumbs() {
   const pathname = usePathname();
+  const projectId = React.useMemo(
+    () => pathname?.match(/^\/dashboard\/projects\/([^/]+)/)?.[1] ?? null,
+    [pathname],
+  );
+  const { data: project } = useProject(projectId ?? "", { enabled: Boolean(projectId) });
+  const projectTitle = project?.name?.trim() || undefined;
 
   return React.useMemo(() => {
     if (!pathname || pathname === "/" || pathname === "/dashboard") {
@@ -56,26 +71,17 @@ function useBreadcrumbs() {
       const sub = segments.slice(1);
       return sub.map((segment, index) => {
         const href = "/dashboard/" + sub.slice(0, index + 1).join("/");
-        const label = segment
-          .split("-")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
+        const isProjectIdCrumb = sub[0] === "projects" && index === 1;
+        const label = isProjectIdCrumb ? (projectTitle ?? "Project") : segmentToTitle(segment);
         return { label, href };
       });
     }
 
-    const breadcrumbs = segments.map((segment, index) => {
+    return segments.map((segment, index) => {
       const href = "/" + segments.slice(0, index + 1).join("/");
-      const label = segment
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-
-      return { label, href };
+      return { label: segmentToTitle(segment), href };
     });
-
-    return breadcrumbs;
-  }, [pathname]);
+  }, [pathname, projectId, projectTitle]);
 }
 
 /**
@@ -90,29 +96,29 @@ export function DashboardLayout({
     email: "demo@example.com",
   },
 }: DashboardLayoutProps) {
-  const breadcrumbs = useBreadcrumbs();
+  const breadcrumbs = useDashboardBreadcrumbs();
 
   return (
     <DashboardAuthGate>
       <OrganizationScopedQuerySync />
       <SidebarProvider>
-        <AppSidebar userRole={userRole} user={user} />
+        <AppSidebar userRole={userRole} />
         <SidebarInset className="min-h-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <SidebarTrigger className="-ml-1 shrink-0" />
+            <Separator orientation="vertical" className="mr-1 hidden h-4 sm:block" />
+            <Breadcrumb className="min-w-0">
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, index) => (
                   <React.Fragment key={crumb.href}>
                     {index > 0 && <BreadcrumbSeparator />}
-                    <BreadcrumbItem>
+                    <BreadcrumbItem className="min-w-0">
                       {index === breadcrumbs.length - 1 ? (
-                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                        <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink href={crumb.href}>
+                        <BreadcrumbLink href={crumb.href} className="truncate">
                           {crumb.label}
                         </BreadcrumbLink>
                       )}
@@ -122,6 +128,7 @@ export function DashboardLayout({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+          <DashboardHeaderActions user={user} />
         </header>
 
         {/* Main Content — min-h-0 + overflow-auto: nested routes fill viewport height and scroll here */}

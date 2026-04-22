@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 import { FolderKanban, Info, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,16 @@ const statusCopy: Record<Project["status"], string> = {
   completed: "Project is completed",
 };
 
+function formatCreatedAt(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  return formatDistanceToNow(d, { addSuffix: true });
+}
+
 export function ProjectListCard({ project, onEdit, onDeleteRequest }: ProjectListCardProps) {
+  const createdLabel = formatCreatedAt(project.createdAt);
   return (
     <Card
       className={cn(
@@ -86,6 +96,11 @@ export function ProjectListCard({ project, onEdit, onDeleteRequest }: ProjectLis
             <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
               {project.description?.trim() ? project.description : "No description yet"}
             </p>
+            {createdLabel ? (
+              <p className="text-muted-foreground/85 pt-0.5 text-[11px] leading-none">
+                Created {createdLabel}
+              </p>
+            ) : null}
           </div>
         </div>
       </CardHeader>

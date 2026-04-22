@@ -192,6 +192,34 @@ export type ListProjectActivityParams = PaginationParams & {
   action?: string;
 };
 
+export type ProjectSkillListItem = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProjectSkill = ProjectSkillListItem & {
+  projectId: string;
+  bodyMarkdown: string;
+};
+
+export type CreateProjectSkillDto = {
+  title: string;
+  summary?: string;
+  bodyMarkdown: string;
+  slug?: string;
+};
+
+export type UpdateProjectSkillDto = {
+  title?: string;
+  summary?: string | null;
+  bodyMarkdown?: string;
+};
+
 /** Full project payload from GET /projects/:id (Prisma shape). */
 export type ProjectOverviewProject = {
   id: string;
@@ -574,4 +602,57 @@ export async function getProjectActivity(
     `${PROJECT_ENDPOINTS.ACTIVITY(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
   );
   return parseResponseData<PaginatedResponse<ProjectActivity>>(response);
+}
+
+export async function getProjectSkills(
+  projectId: string,
+  config?: { signal?: AbortSignal },
+): Promise<ProjectSkillListItem[]> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.SKILLS(projectId), {
+    signal: config?.signal,
+  });
+  return parseResponseData<ProjectSkillListItem[]>(response);
+}
+
+export async function getProjectSkill(projectId: string, skillId: string): Promise<ProjectSkill> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.SKILL(projectId, skillId));
+  return parseResponseData<ProjectSkill>(response);
+}
+
+export async function createProjectSkill(projectId: string, data: CreateProjectSkillDto): Promise<ProjectSkill> {
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.SKILLS(projectId), data);
+  return parseResponseData<ProjectSkill>(response);
+}
+
+export async function updateProjectSkill(
+  projectId: string,
+  skillId: string,
+  data: UpdateProjectSkillDto,
+): Promise<ProjectSkill> {
+  const response = await apiClient.patch<unknown>(PROJECT_ENDPOINTS.SKILL(projectId, skillId), data);
+  return parseResponseData<ProjectSkill>(response);
+}
+
+export async function deleteProjectSkill(projectId: string, skillId: string): Promise<void> {
+  await apiClient.delete(PROJECT_ENDPOINTS.SKILL(projectId, skillId));
+}
+
+export async function exportProjectSkill(
+  projectId: string,
+  skillId: string,
+  format: "md" | "txt",
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(
+    `${PROJECT_ENDPOINTS.SKILL_EXPORT(projectId, skillId)}${buildQueryString({ format })}`,
+    { responseType: "blob" },
+  );
+  const disposition = response.headers["content-disposition"];
+  let filename = `skill.${format}`;
+  if (disposition && typeof disposition === "string") {
+    const match = /filename="?([^";]+)"?/i.exec(disposition);
+    if (match?.[1]) {
+      filename = match[1];
+    }
+  }
+  return { blob: response.data, filename };
 }

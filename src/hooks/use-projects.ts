@@ -11,10 +11,12 @@ import {
   createProject,
   createProjectDocumentation,
   createProjectRequirement,
+  createProjectSkill,
   createProjectTask,
   deleteProject,
   deleteProjectDocumentation,
   deleteProjectRequirement,
+  deleteProjectSkill,
   deleteProjectTask,
   getProject,
   getProjectActivity,
@@ -25,6 +27,8 @@ import {
   getProjectRequirements,
   getProjectRole,
   getProjects,
+  getProjectSkill,
+  getProjectSkills,
   getProjectTask,
   getProjectTasks,
   reorderProjectTasks,
@@ -33,12 +37,14 @@ import {
   updateProjectDocumentation,
   updateProjectMemberRole,
   updateProjectRequirement,
+  updateProjectSkill,
   updateProjectTask,
   type AddProjectMemberDto,
   type CreateProjectDocumentationDto,
   type CreateProjectDto,
   type ListProjectDocumentationsParams,
   type CreateProjectRequirementDto,
+  type CreateProjectSkillDto,
   type CreateProjectTaskDto,
   type ListProjectActivityParams,
   type ListProjectTasksParams,
@@ -49,10 +55,13 @@ import {
   type ProjectMember,
   type ProjectRequirement,
   type ProjectRoleSummary,
+  type ProjectSkill,
+  type ProjectSkillListItem,
   type ProjectTask,
   type UpdateProjectDocumentationDto,
   type UpdateProjectDto,
   type UpdateProjectRequirementDto,
+  type UpdateProjectSkillDto,
   type ReorderProjectTasksDto,
   type UpdateProjectTaskDto,
 } from "@/api/projects.api";
@@ -76,6 +85,8 @@ export const projectKeys = {
   requirements: (id: string, params: PaginationParams & { status?: ProjectRequirement["status"] }) =>
     [...projectKeys.detail(id), "requirements", params] as const,
   activity: (id: string, params: PaginationParams) => [...projectKeys.detail(id), "activity", params] as const,
+  skills: (id: string) => [...projectKeys.detail(id), "skills"] as const,
+  skill: (projectId: string, skillId: string) => [...projectKeys.detail(projectId), "skill", skillId] as const,
 };
 
 export function invalidateProjectOverview(queryClient: QueryClient, projectId: string) {
@@ -102,6 +113,13 @@ export function invalidateProjectTaskQueries(queryClient: QueryClient, projectId
     queryClient.invalidateQueries({ queryKey: projectKeys.task(projectId, taskId) });
   }
   invalidateProjectOverview(queryClient, projectId);
+}
+
+export function invalidateProjectSkillQueries(queryClient: QueryClient, projectId: string, skillId?: string) {
+  queryClient.invalidateQueries({ queryKey: projectKeys.skills(projectId) });
+  if (skillId) {
+    queryClient.invalidateQueries({ queryKey: projectKeys.skill(projectId, skillId) });
+  }
 }
 
 export function useProjects(params: PaginationParams & { status?: Project["status"]; search?: string }, options?: Omit<UseQueryOptions<PaginatedResponse<Project>, Error>, "queryKey" | "queryFn">) {
@@ -360,6 +378,79 @@ export function useDeleteProjectRequirement(options?: UseMutationOptions<void, E
     onSuccess: (data, variables, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(variables.projectId), "requirements"] });
       invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useProjectSkills(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectSkillListItem[], Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.skills(projectId),
+    queryFn: ({ signal }) => getProjectSkills(projectId, { signal }),
+    enabled: !!projectId,
+    ...options,
+  });
+}
+
+export function useProjectSkill(
+  projectId: string,
+  skillId: string,
+  options?: Omit<UseQueryOptions<ProjectSkill, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.skill(projectId, skillId),
+    queryFn: () => getProjectSkill(projectId, skillId),
+    enabled: !!projectId && !!skillId,
+    ...options,
+  });
+}
+
+export function useCreateProjectSkill(
+  options?: UseMutationOptions<ProjectSkill, Error, { projectId: string; data: CreateProjectSkillDto }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => createProjectSkill(projectId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectSkillQueries(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useUpdateProjectSkill(
+  options?: UseMutationOptions<
+    ProjectSkill,
+    Error,
+    { projectId: string; skillId: string; data: UpdateProjectSkillDto }
+  >,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, skillId, data }) => updateProjectSkill(projectId, skillId, data),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      invalidateProjectSkillQueries(queryClient, variables.projectId, variables.skillId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useDeleteProjectSkill(options?: UseMutationOptions<void, Error, { projectId: string; skillId: string }>) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, skillId }) => deleteProjectSkill(projectId, skillId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.removeQueries({ queryKey: projectKeys.skill(variables.projectId, variables.skillId) });
+      invalidateProjectSkillQueries(queryClient, variables.projectId);
       onSuccess?.(data, variables, onMutateResult, context);
     },
   });

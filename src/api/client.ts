@@ -65,12 +65,33 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
+    if (axios.isAxiosError(error) && (error.code === "ERR_CANCELED" || error.message === "canceled")) {
+      return Promise.reject(error);
+    }
+
     // Log error in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[API Response Error]', {
-        url: error.config?.url,
+    if (process.env.NODE_ENV === "development") {
+      const base = error.config?.baseURL ?? "";
+      const path = error.config?.url ?? "";
+      const fullUrl = base && path ? `${base.replace(/\/$/, "")}${path.startsWith("/") ? "" : "/"}${path}` : path || base;
+      const payload = error.response?.data as unknown;
+      let payloadPreview: string | undefined;
+      try {
+        if (typeof payload === "string") {
+          payloadPreview = payload.slice(0, 500);
+        } else if (payload !== undefined) {
+          payloadPreview = JSON.stringify(payload);
+        }
+      } catch {
+        payloadPreview = "[unserializable]";
+      }
+      console.error("[API Response Error]", {
+        fullUrl: fullUrl || undefined,
+        method: error.config?.method,
         status: error.response?.status,
-        message: error.response?.data?.message || error.message,
+        code: error.code,
+        axiosMessage: error.message,
+        data: payloadPreview,
       });
     }
 
@@ -129,14 +150,41 @@ apiClient.interceptors.response.use(
 /**
  * Helper function to extract error message from API error
  */
+function nestMessageFromBody(data: unknown): string | undefined {
+  if (data == null) {
+    return undefined;
+  }
+  if (typeof data === "string") {
+    const t = data.trim();
+    return t.length > 0 ? t : undefined;
+  }
+  if (typeof data === "object" && "message" in data) {
+    const raw = (data as { message: unknown }).message;
+    if (typeof raw === "string" && raw.trim()) {
+      return raw.trim();
+    }
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((x) => String(x)).join("; ");
+    }
+  }
+  return undefined;
+}
+
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.message || error.message || 'An unexpected error occurred';
+    if (error.code === "ERR_CANCELED" || error.message === "canceled") {
+      return "Request was cancelled";
+    }
+    const fromBody = nestMessageFromBody(error.response?.data as unknown);
+    if (fromBody) {
+      return fromBody;
+    }
+    return error.message || "An unexpected error occurred";
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return 'An unexpected error occurred';
+  return "An unexpected error occurred";
 }
 
 /**

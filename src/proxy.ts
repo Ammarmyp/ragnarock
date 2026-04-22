@@ -31,7 +31,7 @@ export function proxy(request: NextRequest) {
   const hasAuthSignal = Boolean(sessionCookie || hasSessionHint);
   const hasVerifiedSession = Boolean(sessionCookie);
 
-  if ((pathname.startsWith("/dashboard") || pathname === "/profile") && !hasAuthSignal) {
+  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/account")) && !hasAuthSignal) {
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirectTo", `${pathname}${search}`);
     return NextResponse.redirect(signInUrl);
@@ -48,7 +48,8 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/profile",
+    "/account",
+    "/account/:path*",
     "/sign-in",
     "/sign-up",
     "/verify-otp",

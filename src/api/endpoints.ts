@@ -57,6 +57,19 @@ export const PROJECT_ENDPOINTS = {
   REQUIREMENT: (projectId: string, requirementId: string) =>
     `/projects/${projectId}/requirements/${requirementId}`,
   ACTIVITY: (projectId: string) => `/projects/${projectId}/activity`,
+  SKILLS: (projectId: string) => `/projects/${projectId}/skills`,
+  SKILL: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}`,
+  SKILL_EXPORT: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}/export`,
+} as const;
+
+/**
+ * Organization integrations (active org context; backend reads org from session/header)
+ */
+export const INTEGRATION_ENDPOINTS = {
+  LIST: "/integrations",
+  LINEAR_CONNECT: "/integrations/linear",
+  DISCONNECT: (provider: string) => `/integrations/${provider}`,
+  VERIFY: (provider: string) => `/integrations/${provider}/verify`,
 } as const;
 
 /**
@@ -153,6 +166,7 @@ export const API_ENDPOINTS = {
   AUTH: AUTH_ENDPOINTS,
   USER: USER_ENDPOINTS,
   PROJECT: PROJECT_ENDPOINTS,
+  INTEGRATION: INTEGRATION_ENDPOINTS,
   REQUIREMENT: REQUIREMENT_ENDPOINTS,
   DASHBOARD: DASHBOARD_ENDPOINTS,
   FILE: FILE_ENDPOINTS,

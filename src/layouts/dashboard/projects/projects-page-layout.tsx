@@ -13,6 +13,7 @@ import { createProjectListColumns } from "@/layouts/dashboard/projects/project-l
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Dialog,
@@ -346,13 +347,15 @@ export function ProjectsPageLayout() {
                       return (
                         <Field data-invalid={isInvalid}>
                           <FieldLabel htmlFor={`create-project-${field.name}`}>Description</FieldLabel>
-                          <Input
+                          <Textarea
                             id={`create-project-${field.name}`}
                             name={field.name}
+                            rows={4}
                             value={field.state.value}
                             onBlur={field.handleBlur}
                             onChange={(e) => field.handleChange(e.target.value)}
                             aria-invalid={isInvalid}
+                            className="min-h-[5.5rem] resize-y"
                           />
                           <FieldDescription>Optional short context for the team.</FieldDescription>
                           {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -414,13 +417,15 @@ export function ProjectsPageLayout() {
                       return (
                         <Field data-invalid={isInvalid}>
                           <FieldLabel htmlFor={`edit-project-${field.name}`}>Description</FieldLabel>
-                          <Input
+                          <Textarea
                             id={`edit-project-${field.name}`}
                             name={field.name}
+                            rows={4}
                             value={field.state.value}
                             onBlur={field.handleBlur}
                             onChange={(e) => field.handleChange(e.target.value)}
                             aria-invalid={isInvalid}
+                            className="min-h-[5.5rem] resize-y"
                           />
                           <FieldDescription>Optional short context for the team.</FieldDescription>
                           {isInvalid && <FieldError errors={field.state.meta.errors} />}
