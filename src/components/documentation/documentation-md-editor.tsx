@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import "@uiw/react-md-editor/markdown-editor.css";
+import { cn } from "@/lib/utils";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -10,6 +11,7 @@ type DocumentationMdEditorProps = {
   onChange: (value: string) => void;
   readOnly?: boolean;
   height?: number;
+  className?: string;
 };
 
 export function DocumentationMdEditor({
@@ -17,9 +19,10 @@ export function DocumentationMdEditor({
   onChange,
   readOnly = false,
   height = 420,
+  className,
 }: DocumentationMdEditorProps) {
   return (
-    <div data-color-mode="auto" className="documentation-md-editor w-full">
+    <div data-color-mode="auto" className={cn("documentation-md-editor w-full", className)}>
       <MDEditor
         value={value}
         onChange={(v) => onChange(typeof v === "string" ? v : "")}

@@ -200,3 +200,93 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  .documentation-md-editor .w-md-editor {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 2);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: box-shadow 140ms ease, border-color 140ms ease;
+  }
+
+  .documentation-md-editor .w-md-editor:focus-within {
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 45%, transparent), var(--shadow-md);
+  }
+
+  .documentation-md-editor .w-md-editor-toolbar {
+    background: color-mix(in oklch, var(--card) 96%, var(--secondary));
+    border-bottom: 1px solid var(--border);
+    padding-inline: 0.625rem;
+    min-height: 2.9rem;
+    gap: 0.2rem;
+  }
+
+  .documentation-md-editor .w-md-editor-toolbar ul > li > button {
+    border-radius: var(--radius-sm);
+    height: 1.85rem;
+    min-width: 1.85rem;
+    color: color-mix(in oklch, var(--muted-foreground) 88%, var(--foreground));
+  }
+
+  .documentation-md-editor .w-md-editor-toolbar ul > li > button:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  .documentation-md-editor .w-md-editor-toolbar ul > li > button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 40%, transparent);
+  }
+
+  .documentation-md-editor .w-md-editor-text-container,
+  .documentation-md-editor .w-md-editor-preview {
+    background: var(--card);
+  }
+
+  .documentation-md-editor .w-md-editor-content {
+    border-right: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+  }
+
+  .documentation-md-editor .w-md-editor-text-input,
+  .documentation-md-editor .w-md-editor-text-pre,
+  .documentation-md-editor .wmde-markdown {
+    font-size: 0.93rem;
+    line-height: 1.7;
+  }
+
+  .documentation-md-editor .w-md-editor-text-input {
+    padding: 1.35rem 1.2rem;
+    letter-spacing: -0.01em;
+  }
+
+  .documentation-md-editor .w-md-editor-preview {
+    padding: 1.35rem 1.2rem;
+  }
+
+  .documentation-md-editor .wmde-markdown h1,
+  .documentation-md-editor .wmde-markdown h2,
+  .documentation-md-editor .wmde-markdown h3 {
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  .documentation-md-editor .wmde-markdown h1 {
+    font-size: 1.45rem;
+  }
+
+  .documentation-md-editor .wmde-markdown h2 {
+    font-size: 1.22rem;
+  }
+
+  .documentation-md-editor .wmde-markdown h3 {
+    font-size: 1.04rem;
+  }
+
+  .documentation-md-editor--create .w-md-editor {
+    border-radius: calc(var(--radius) * 2.5);
+    box-shadow: var(--shadow-md);
+  }
+}

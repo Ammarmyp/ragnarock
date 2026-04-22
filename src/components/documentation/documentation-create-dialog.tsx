@@ -6,14 +6,14 @@ import { z } from "zod";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { DocumentationType } from "@/api/projects.api";
@@ -55,18 +55,22 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button size="sm">
           <Plus className="mr-1 size-4" />
           New document
         </Button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[min(90vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="shrink-0 border-b px-6 py-4">
-          <DialogTitle>Create documentation</DialogTitle>
-          <DialogDescription>Add a project document. Content is stored as Markdown.</DialogDescription>
-        </DialogHeader>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full max-w-none flex-col gap-0 p-0 sm:w-[min(72vw,1400px)]! sm:max-w-[min(72vw,1400px)]!"
+        style={{ width: "min(72vw, 1400px)", maxWidth: "min(72vw, 1400px)" }}
+      >
+        <SheetHeader className="shrink-0 border-b px-6 py-4">
+          <SheetTitle>Create documentation</SheetTitle>
+          <SheetDescription>Add a project document. Content is stored as Markdown.</SheetDescription>
+        </SheetHeader>
         <form
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
@@ -74,7 +78,7 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
             form.handleSubmit();
           }}
         >
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
             <form.Field name="title">
               {(field) => {
                 const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
@@ -88,6 +92,7 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
+                      placeholder="Enter document title"
                     />
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
@@ -120,11 +125,15 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor={field.name}>Content</FieldLabel>
-                    <div id={field.name} className="mt-1">
+                    <FieldDescription>
+                      Write in Markdown with live preview to validate structure while you type.
+                    </FieldDescription>
+                    <div id={field.name} className="mt-2">
                       <DocumentationMdEditor
                         value={field.state.value}
                         onChange={(v) => field.handleChange(v)}
-                        height={360}
+                        className="documentation-md-editor--create"
+                        height={680}
                       />
                     </div>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -133,13 +142,13 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
               }}
             </form.Field>
           </div>
-          <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <SheetFooter className="shrink-0 border-t px-6 py-4">
             <Button type="submit" disabled={createDocumentation.isPending}>
               {createDocumentation.isPending ? "Creating…" : "Create"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -48,6 +48,22 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   userRole?: UserRole;
 }
 
+type SidebarNavItem = {
+  title: string;
+  href: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+  badge?: string | number;
+};
+
+type SidebarConfig = {
+  navGroups: Array<{
+    title?: string;
+    items: SidebarNavItem[];
+  }>;
+  footerItems: SidebarNavItem[];
+};
+
 /**
  * AppSidebar Component
  * Displays hierarchical navigation with role-based filtering
@@ -72,7 +88,7 @@ export function AppSidebar({
     setSelectedProjectId(activeProjectId);
   }, [activeProjectId, setSelectedProjectId]);
 
-  const config = React.useMemo(() => {
+  const config = React.useMemo<SidebarConfig>(() => {
     if (isAccountRoute) {
       return {
         navGroups: [
@@ -115,7 +131,7 @@ export function AppSidebar({
             { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
-            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare, badge: "Soon", disabled: true },
+            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare,  disabled: true },
           ],
         },
       ],
@@ -203,7 +219,7 @@ export function AppSidebar({
                         <Link href={item.href}>
                           {Icon && <Icon className="size-4" />}
                           <span>{item.title}</span>
-                          {item.badge !== undefined && (
+                          {item.badge != null && (
                             <Badge
                               variant="secondary"
                               className="ml-auto h-5 px-1.5 text-xs"
