@@ -131,7 +131,7 @@ export function AppSidebar({
             { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
-            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare,  disabled: true },
+            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare },
           ],
         },
       ],

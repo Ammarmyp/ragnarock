@@ -243,6 +243,8 @@ function uid() {
 
 export interface RequirementsWorkspaceState {
   projectId: string | null;
+  /** Backend Nest `ProjectAiChatSession` id when wired to persisted AI chat; drives Socket.IO sync. */
+  backendAiChatSessionId: string | null;
   stages: InterviewStage[];
   activeStageIndex: number;
   chatMode: ChatMode;
@@ -258,6 +260,7 @@ export interface RequirementsWorkspaceState {
   insightSuggestions: string[];
 
   setProjectId: (id: string | null) => void;
+  setBackendAiChatSessionId: (id: string | null) => void;
   setChatMode: (mode: ChatMode) => void;
   setReviewMode: (v: boolean) => void;
   toggleSection: (id: SrsSectionId) => void;
@@ -287,6 +290,7 @@ const defaultExpanded: Record<SrsSectionId, boolean> = {
 
 export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>((set, get) => ({
   projectId: null,
+  backendAiChatSessionId: null,
   stages: stagesSeed,
   activeStageIndex: 2,
   chatMode: "guided",
@@ -306,6 +310,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
   ],
 
   setProjectId: (id) => set({ projectId: id }),
+  setBackendAiChatSessionId: (id) => set({ backendAiChatSessionId: id }),
   setChatMode: (mode) => set({ chatMode: mode }),
   setReviewMode: (v) => set({ reviewMode: v }),
   toggleSection: (id) =>

@@ -60,6 +60,15 @@ export const PROJECT_ENDPOINTS = {
   SKILLS: (projectId: string) => `/projects/${projectId}/skills`,
   SKILL: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}`,
   SKILL_EXPORT: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}/export`,
+  /** Persisted AI requirements chat (Nest ↔ FastAPI). */
+  AI_CHAT_SESSIONS: (projectId: string) => `/projects/${projectId}/ai/chat/sessions`,
+  AI_CHAT_MESSAGES: (projectId: string, sessionId: string) =>
+    `/projects/${projectId}/ai/chat/sessions/${sessionId}/messages`,
+  AI_REQUIREMENTS: (projectId: string) => `/projects/${projectId}/ai/requirements`,
+  AI_REQUIREMENTS_UPLOAD: (projectId: string) => `/projects/${projectId}/ai/requirements/upload`,
+  SPECIFICATIONS: (projectId: string) => `/projects/${projectId}/specifications`,
+  SPECIFICATION: (projectId: string, specificationId: string) =>
+    `/projects/${projectId}/specifications/${specificationId}`,
 } as const;
 
 /**
