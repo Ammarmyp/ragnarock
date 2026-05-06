@@ -60,6 +60,28 @@ export const PROJECT_ENDPOINTS = {
   SKILLS: (projectId: string) => `/projects/${projectId}/skills`,
   SKILL: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}`,
   SKILL_EXPORT: (projectId: string, skillId: string) => `/projects/${projectId}/skills/${skillId}/export`,
+  REPOSITORIES: (projectId: string) => `/projects/${projectId}/repositories`,
+  REPOSITORY: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}`,
+  REPOSITORY_REFRESH: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/refresh`,
+  REPOSITORY_COMMITS: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/commits`,
+  REPOSITORY_CONTRIBUTORS: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/contributors`,
+  REPOSITORY_PULLS: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/pulls`,
+  REPOSITORY_ISSUES: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/issues`,
+  REPOSITORY_BROWSE: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/browse`,
+  REPOSITORY_FILE: (projectId: string, repositoryId: string) =>
+    `/projects/${projectId}/repositories/${repositoryId}/file`,
+} as const;
+
+/** GitHub-backed discovery (uses the signed-in user's GitHub OAuth token). */
+export const GITHUB_REPO_ENDPOINTS = {
+  SEARCH: "/repositories/search",
 } as const;
 
 /**
@@ -166,6 +188,7 @@ export const API_ENDPOINTS = {
   AUTH: AUTH_ENDPOINTS,
   USER: USER_ENDPOINTS,
   PROJECT: PROJECT_ENDPOINTS,
+  GITHUB_REPO: GITHUB_REPO_ENDPOINTS,
   INTEGRATION: INTEGRATION_ENDPOINTS,
   REQUIREMENT: REQUIREMENT_ENDPOINTS,
   DASHBOARD: DASHBOARD_ENDPOINTS,

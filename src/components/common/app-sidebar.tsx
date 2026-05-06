@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   FileText,
   FolderKanban,
+  GitBranch,
   KeyRound,
   LayoutDashboard,
   ListChecks,
@@ -28,7 +29,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -131,6 +131,7 @@ export function AppSidebar({
             { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
+            { title: "Repositories", href: `${base}/repositories`, icon: GitBranch },
             { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare,  disabled: true },
           ],
         },
@@ -201,7 +202,6 @@ export function AppSidebar({
       <SidebarContent>
         {config.navGroups.map((group, groupIndex) => (
           <SidebarGroup key={groupIndex}>
-            {group.title && <SidebarGroupLabel>{group.title}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {

@@ -23,6 +23,7 @@ import { DashboardHeaderActions } from "@/components/common/dashboard-header-act
 import { DashboardAuthGate } from "@/components/common/dashboard-auth-gate";
 import { OrganizationScopedQuerySync } from "@/components/common/organization-scoped-query-sync";
 import { useProject } from "@/hooks/use-projects";
+import { useProjectRepositoryDetail } from "@/hooks/use-repositories";
 import type { UserRole } from "@/types";
 
 interface DashboardLayoutProps {
@@ -58,8 +59,16 @@ function useDashboardBreadcrumbs() {
     () => pathname?.match(/^\/dashboard\/projects\/([^/]+)/)?.[1] ?? null,
     [pathname],
   );
+  const repositoryId = React.useMemo(() => {
+    const m = pathname?.match(/^\/dashboard\/projects\/[^/]+\/repositories\/([^/]+)/);
+    return m?.[1] ?? null;
+  }, [pathname]);
   const { data: project } = useProject(projectId ?? "", { enabled: Boolean(projectId) });
   const projectTitle = project?.name?.trim() || undefined;
+  const { data: repo } = useProjectRepositoryDetail(projectId ?? "", repositoryId ?? "", {
+    enabled: Boolean(projectId && repositoryId),
+  });
+  const repoTitle = repo?.fullName?.trim() || repo?.name?.trim() || undefined;
 
   return React.useMemo(() => {
     if (!pathname || pathname === "/" || pathname === "/dashboard") {
@@ -72,7 +81,12 @@ function useDashboardBreadcrumbs() {
       return sub.map((segment, index) => {
         const href = "/dashboard/" + sub.slice(0, index + 1).join("/");
         const isProjectIdCrumb = sub[0] === "projects" && index === 1;
-        const label = isProjectIdCrumb ? (projectTitle ?? "Project") : segmentToTitle(segment);
+        const isRepositoryIdCrumb = sub[0] === "projects" && sub[2] === "repositories" && index === 3;
+        const label = isProjectIdCrumb
+          ? (projectTitle ?? "Project")
+          : isRepositoryIdCrumb
+            ? (repoTitle ?? "Repository")
+            : segmentToTitle(segment);
         return { label, href };
       });
     }
@@ -81,7 +95,7 @@ function useDashboardBreadcrumbs() {
       const href = "/" + segments.slice(0, index + 1).join("/");
       return { label: segmentToTitle(segment), href };
     });
-  }, [pathname, projectId, projectTitle]);
+  }, [pathname, projectId, projectTitle, repoTitle]);
 }
 
 /**
@@ -105,7 +119,7 @@ export function DashboardLayout({
         <AppSidebar userRole={userRole} />
         <SidebarInset className="min-h-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <SidebarTrigger className="-ml-1 shrink-0" />
             <Separator orientation="vertical" className="mr-1 hidden h-4 sm:block" />

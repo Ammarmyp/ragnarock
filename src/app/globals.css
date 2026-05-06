@@ -170,6 +170,32 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+/* === Code viewer (Shiki) line numbers ===
+   Shiki renders each line inside `span.line`.
+   We add a left gutter with CSS counters, like an editor. */
+.code-viewer pre {
+  counter-reset: line;
+  line-height: 1.25;
+}
+
+.code-viewer .line {
+  display: block;
+  line-height: 1.25;
+}
+
+.code-viewer .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 3.25rem;
+  margin-right: 1rem;
+  padding-right: 0.75rem;
+  text-align: right;
+  color: hsl(var(--muted-foreground));
+  border-right: 1px solid hsl(var(--border));
+  user-select: none;
+}
+
 .dark {
   /* === BASE === */
   --background: oklch(0.2046 0 0);

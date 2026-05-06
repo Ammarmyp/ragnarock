@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { DashboardLayout } from "@/layouts/dashboard/dashboard-layout";
-import { useProject, useProjectRole } from "@/hooks/use-projects";
+import { useProject } from "@/hooks/use-projects";
 import { useProjectWorkspaceStore } from "@/stores/project-workspace.store";
 
 type ProjectWorkspaceLayoutProps = {
@@ -14,8 +14,7 @@ type ProjectWorkspaceLayoutProps = {
 export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspaceLayoutProps) {
   const pathname = usePathname();
   const isProjectOverview = pathname?.includes("/overview");
-  const { data: project } = useProject(projectId);
-  const { data: role } = useProjectRole(projectId);
+  void useProject(projectId);
   const setSelectedProjectId = useProjectWorkspaceStore((state) => state.setSelectedProjectId);
 
   useEffect(() => {
@@ -32,14 +31,7 @@ export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspace
             : "flex h-full min-h-0 flex-1 flex-col gap-3 p-4 md:p-5"
         }
       >
-        {!isProjectOverview ? (
-          <div className="shrink-0">
-            <h1 className="text-xl font-bold tracking-tight md:text-2xl">{project?.name ?? "Project Workspace"}</h1>
-            <p className="text-muted-foreground text-xs md:text-sm">
-              Role: <span className="capitalize">{role?.role ?? "viewer"}</span>
-            </p>
-          </div>
-        ) : null}
+        {/* Project name/role now live in the top header next to the avatar. */}
         <div
           className={
             isProjectOverview

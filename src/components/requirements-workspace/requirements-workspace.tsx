@@ -46,7 +46,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
           <SrsCenterPanel />
         </div>
 
-        <div className="order-3 flex min-h-[200px] flex-col lg:order-3 lg:min-h-0">
+        {/* <div className="order-3 flex min-h-[200px] flex-col lg:order-3 lg:min-h-0">
           <RequirementsCollapsibleSide
             side="right"
             open={rightOpen}
@@ -55,7 +55,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
           >
             <SrsRightPanel onCollapse={() => setRightOpen(false)} />
           </RequirementsCollapsibleSide>
-        </div>
+        </div> */}
       </div>
     </div>
   );
