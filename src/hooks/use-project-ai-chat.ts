@@ -14,7 +14,7 @@ import {
   listProjectAiChatSessions,
   submitProjectAiRequirements,
   submitProjectAiRequirementsUpload,
-  type AiTurnCompletedResponse,
+  type AiTurnQueuedResponse,
   type CreateProjectAiChatSessionDto,
   type ProjectAiChatMessage,
   type ProjectAiChatSession,
@@ -83,7 +83,7 @@ export function useCreateProjectAiChatSession(
 
 export function useSubmitAiRequirementsTurn(
   options?: UseMutationOptions<
-    AiTurnCompletedResponse,
+    AiTurnQueuedResponse,
     Error,
     { projectId: string; sessionId: string; input: string; type: "text" | "url" }
   >,
@@ -103,7 +103,7 @@ export function useSubmitAiRequirementsTurn(
 
 export function useSubmitAiRequirementsUpload(
   options?: UseMutationOptions<
-    AiTurnCompletedResponse,
+    AiTurnQueuedResponse,
     Error,
     { projectId: string; sessionId: string; file: File }
   >,

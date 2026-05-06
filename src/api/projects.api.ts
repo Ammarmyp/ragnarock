@@ -695,6 +695,12 @@ export interface AiTurnCompletedResponse {
   specificationId?: string;
 }
 
+export interface AiTurnQueuedResponse {
+  jobId: string;
+  userMessageId: string;
+  status: "queued";
+}
+
 export interface CreateProjectAiChatSessionDto {
   title?: string;
 }
@@ -731,16 +737,16 @@ export async function listProjectAiChatMessages(
 export async function submitProjectAiRequirements(
   projectId: string,
   body: { sessionId: string; input: string; type: "text" | "url" },
-): Promise<AiTurnCompletedResponse> {
+): Promise<AiTurnQueuedResponse> {
   const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.AI_REQUIREMENTS(projectId), body);
-  return parseResponseData<AiTurnCompletedResponse>(response);
+  return parseResponseData<AiTurnQueuedResponse>(response);
 }
 
 export async function submitProjectAiRequirementsUpload(
   projectId: string,
   sessionId: string,
   file: File,
-): Promise<AiTurnCompletedResponse> {
+): Promise<AiTurnQueuedResponse> {
   const formData = new FormData();
   formData.append("sessionId", sessionId);
   formData.append("file", file);
@@ -754,5 +760,5 @@ export async function submitProjectAiRequirementsUpload(
       },
     ],
   });
-  return parseResponseData<AiTurnCompletedResponse>(response);
+  return parseResponseData<AiTurnQueuedResponse>(response);
 }

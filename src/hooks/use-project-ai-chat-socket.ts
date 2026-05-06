@@ -13,6 +13,12 @@ export type AiTurnCompletedEvent = {
   specificationId?: string;
 };
 
+export type AiTurnFailedEvent = {
+  jobId: string;
+  userMessageId: string;
+  error: string;
+};
+
 export type AiErrorEvent = { code: unknown; message: string };
 
 export type UseProjectAiChatSocketOptions = {
@@ -20,17 +26,35 @@ export type UseProjectAiChatSocketOptions = {
   enabled?: boolean;
   onProcessing?: (payload: AiProcessingEvent) => void;
   onTurnCompleted?: (payload: AiTurnCompletedEvent) => void;
+  onTurnFailed?: (payload: AiTurnFailedEvent) => void;
   onError?: (payload: AiErrorEvent) => void;
 };
 
 /**
  * Subscribes to Nest `/ai-chat` Socket.IO namespace (Better Auth cookie session).
- * Joins `sessionId` room after connect; listens for `processing`, `turn_completed`, and `error`.
+ * Joins `sessionId` room after connect; listens for `processing`, `turn_completed`, `turn_failed`, and `error`.
  */
 export function useProjectAiChatSocket(options: UseProjectAiChatSocketOptions) {
-  const { sessionId, enabled = true } = options;
+  const {
+    sessionId,
+    enabled = true,
+    onProcessing,
+    onTurnCompleted,
+    onTurnFailed,
+    onError,
+  } = options;
   const callbacksRef = useRef(options);
-  callbacksRef.current = options;
+
+  useEffect(() => {
+    callbacksRef.current = {
+      sessionId,
+      enabled,
+      onProcessing,
+      onTurnCompleted,
+      onTurnFailed,
+      onError,
+    };
+  }, [enabled, sessionId, onProcessing, onTurnCompleted, onTurnFailed, onError]);
 
   useEffect(() => {
     if (!enabled || !sessionId) {
@@ -50,12 +74,16 @@ export function useProjectAiChatSocket(options: UseProjectAiChatSocketOptions) {
     const onDone = (payload: AiTurnCompletedEvent) => {
       callbacksRef.current.onTurnCompleted?.(payload);
     };
+    const onFailed = (payload: AiTurnFailedEvent) => {
+      callbacksRef.current.onTurnFailed?.(payload);
+    };
     const onWsErr = (payload: AiErrorEvent) => {
       callbacksRef.current.onError?.(payload);
     };
 
     socket.on("processing", onProc);
     socket.on("turn_completed", onDone);
+    socket.on("turn_failed", onFailed);
     socket.on("error", onWsErr);
 
     const join = () => {
@@ -85,6 +113,7 @@ export function useProjectAiChatSocket(options: UseProjectAiChatSocketOptions) {
     return () => {
       socket.off("processing", onProc);
       socket.off("turn_completed", onDone);
+      socket.off("turn_failed", onFailed);
       socket.off("error", onWsErr);
       socket.off("connect", join);
       socket.disconnect();

@@ -45,6 +45,7 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
   const [inputMode, setInputMode] = useState<"text" | "url">("text");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -86,7 +87,22 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
   useProjectAiChatSocket({
     sessionId: activeSessionId,
     enabled: Boolean(activeSessionId),
-    onTurnCompleted: invalidateFromSocket,
+    onProcessing: () => {
+      setAgentStatus("Agent is processing your message...");
+      invalidateFromSocket();
+    },
+    onTurnCompleted: () => {
+      setAgentStatus(null);
+      invalidateFromSocket();
+    },
+    onTurnFailed: (payload) => {
+      setAgentStatus(null);
+      setSubmitError(payload.error || "The AI agent could not process this message.");
+      invalidateFromSocket();
+    },
+    onError: (payload) => {
+      setSubmitError(payload.message);
+    },
   });
 
   const messages = messagesPage?.data ?? [];
@@ -94,7 +110,7 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, activeSessionId]);
+  }, [messages.length, activeSessionId, agentStatus]);
 
   const handleNewChat = () => {
     setSubmitError(null);
@@ -107,7 +123,10 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
     submitTurn.mutate(
       { projectId, sessionId: activeSessionId, input: input.trim(), type: inputMode },
       {
-        onSuccess: () => setInput(""),
+        onSuccess: () => {
+          setInput("");
+          setAgentStatus("Agent queued your message...");
+        },
         onError: (e) => setSubmitError(axiosErrorMessage(e)),
       },
     );
@@ -120,11 +139,14 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
     setUploadError(null);
     submitUpload.mutate(
       { projectId, sessionId: activeSessionId, file },
-      { onError: (err) => setUploadError(axiosErrorMessage(err)) },
+      {
+        onSuccess: () => setAgentStatus("Agent queued your upload..."),
+        onError: (err) => setUploadError(axiosErrorMessage(err)),
+      },
     );
   };
 
-  const busy = submitTurn.isPending || submitUpload.isPending || createSession.isPending;
+  const busy = submitTurn.isPending || submitUpload.isPending || createSession.isPending || Boolean(agentStatus);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
@@ -157,6 +179,7 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
                   setActiveSessionId(s.id);
                   setSubmitError(null);
                   setUploadError(null);
+                  setAgentStatus(null);
                 }}
                 className={cn(
                   "hover:bg-muted rounded-md px-2 py-1.5 text-left text-sm transition-colors",
@@ -201,10 +224,16 @@ export function ProjectAiChatWorkspace({ projectId }: { projectId: string }) {
                       <div className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wide opacity-80">
                         {m.role}
                       </div>
-                      <pre className="font-sans whitespace-pre-wrap break-words">{m.content}</pre>
+                      <pre className="font-sans whitespace-pre-wrap wrap-break-word">{m.content}</pre>
                     </div>
                   ))
                 )}
+                {agentStatus ? (
+                  <div className="bg-muted mr-auto flex max-w-[min(100%,42rem)] items-center gap-2 rounded-lg px-3 py-2 text-sm">
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>{agentStatus}</span>
+                  </div>
+                ) : null}
                 <div ref={messagesEndRef} />
               </div>
             </div>
