@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ProjectAiChatRealtimeSync } from "@/components/projects/project-ai-chat-realtime-sync";
 import { RequirementsCollapsibleSide } from "@/components/requirements-workspace/requirements-collapsible-side";
 import { SrsCenterPanel } from "@/components/requirements-workspace/srs-center-panel";
 import { SrsLeftPanel } from "@/components/requirements-workspace/srs-left-panel";
@@ -13,16 +14,23 @@ type RequirementsIntelligenceWorkspaceProps = {
 
 export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsIntelligenceWorkspaceProps) {
   const setProjectId = useRequirementsWorkspaceStore((s) => s.setProjectId);
+  const setBackendAiChatSessionId = useRequirementsWorkspaceStore((s) => s.setBackendAiChatSessionId);
+  const backendAiChatSessionId = useRequirementsWorkspaceStore((s) => s.backendAiChatSessionId);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
   useEffect(() => {
     setProjectId(projectId);
-    return () => setProjectId(null);
-  }, [projectId, setProjectId]);
+    setBackendAiChatSessionId(null);
+    return () => {
+      setProjectId(null);
+      setBackendAiChatSessionId(null);
+    };
+  }, [projectId, setProjectId, setBackendAiChatSessionId]);
 
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-hidden [--req-chrome:11.5rem] max-h-[calc(100dvh-var(--req-chrome))] lg:h-[calc(100dvh-var(--req-chrome))]">
+      <ProjectAiChatRealtimeSync projectId={projectId} sessionId={backendAiChatSessionId} />
       <header className="shrink-0">
         <h2 className="text-base font-semibold tracking-tight">Requirements intelligence</h2>
         <p className="text-muted-foreground line-clamp-2 text-xs leading-snug md:line-clamp-1">

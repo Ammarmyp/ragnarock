@@ -10,6 +10,11 @@ import { getBearerToken } from '@/lib/auth/bearer-token';
 // Base API URL - configure via environment variable
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+/** Same origin Base URL used by Axios (cookies / Bearer) and Socket.IO client. */
+export function getApiBaseUrl(): string {
+  return BASE_URL;
+}
+
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,

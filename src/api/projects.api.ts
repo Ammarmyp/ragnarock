@@ -656,3 +656,109 @@ export async function exportProjectSkill(
   }
   return { blob: response.data, filename };
 }
+
+// ─── AI requirements chat (Nest ↔ FastAPI) ─────────────────────────────────
+
+export interface ProjectAiChatSession {
+  id: string;
+  projectId: string;
+  createdBy: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; name?: string | null; email?: string | null };
+  _count?: { messages: number };
+}
+
+export interface ProjectAiChatMessage {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  payload?: unknown;
+  createdAt: string;
+}
+
+export type AiAgentResponse =
+  | { status: "needs_clarification"; questions: string[] }
+  | {
+      status: "complete";
+      project_name: string;
+      summary: string;
+      [key: string]: unknown;
+    };
+
+export interface AiTurnCompletedResponse {
+  userMessageId: string;
+  assistantMessageId: string;
+  agent: AiAgentResponse;
+  specificationId?: string;
+}
+
+export interface AiTurnQueuedResponse {
+  jobId: string;
+  userMessageId: string;
+  status: "queued";
+}
+
+export interface CreateProjectAiChatSessionDto {
+  title?: string;
+}
+
+export async function createProjectAiChatSession(
+  projectId: string,
+  data?: CreateProjectAiChatSessionDto,
+): Promise<ProjectAiChatSession> {
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.AI_CHAT_SESSIONS(projectId), data ?? {});
+  return parseResponseData<ProjectAiChatSession>(response);
+}
+
+export async function listProjectAiChatSessions(
+  projectId: string,
+  params: PaginationParams,
+): Promise<PaginatedResponse<ProjectAiChatSession>> {
+  const response = await apiClient.get<unknown>(
+    `${PROJECT_ENDPOINTS.AI_CHAT_SESSIONS(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
+  );
+  return parseResponseData<PaginatedResponse<ProjectAiChatSession>>(response);
+}
+
+export async function listProjectAiChatMessages(
+  projectId: string,
+  sessionId: string,
+  params: PaginationParams,
+): Promise<PaginatedResponse<ProjectAiChatMessage>> {
+  const response = await apiClient.get<unknown>(
+    `${PROJECT_ENDPOINTS.AI_CHAT_MESSAGES(projectId, sessionId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
+  );
+  return parseResponseData<PaginatedResponse<ProjectAiChatMessage>>(response);
+}
+
+export async function submitProjectAiRequirements(
+  projectId: string,
+  body: { sessionId: string; input: string; type: "text" | "url" },
+): Promise<AiTurnQueuedResponse> {
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.AI_REQUIREMENTS(projectId), body);
+  return parseResponseData<AiTurnQueuedResponse>(response);
+}
+
+export async function submitProjectAiRequirementsUpload(
+  projectId: string,
+  sessionId: string,
+  file: File,
+): Promise<AiTurnQueuedResponse> {
+  const formData = new FormData();
+  formData.append("sessionId", sessionId);
+  formData.append("file", file);
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.AI_REQUIREMENTS_UPLOAD(projectId), formData, {
+    transformRequest: [
+      (data, headers) => {
+        if (data instanceof FormData) {
+          delete headers["Content-Type"];
+        }
+        return data as FormData;
+      },
+    ],
+  });
+  return parseResponseData<AiTurnQueuedResponse>(response);
+}

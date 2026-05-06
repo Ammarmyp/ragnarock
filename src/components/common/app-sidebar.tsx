@@ -132,7 +132,7 @@ export function AppSidebar({
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
             { title: "Repositories", href: `${base}/repositories`, icon: GitBranch },
-            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare,  disabled: true },
+            { title: "AI Chat", href: `${base}/ai-chat`, icon: MessageSquare },
           ],
         },
       ],

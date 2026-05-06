@@ -1,7 +1,10 @@
-export default function ProjectAiPlaceholderPage() {
-  return (
-    <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-      AI chat is planned and will be available in a future iteration.
-    </div>
-  );
+import { ProjectAiChatWorkspace } from "@/components/project-ai-chat/project-ai-chat-workspace";
+
+export default async function ProjectAiChatPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  return <ProjectAiChatWorkspace projectId={projectId} />;
 }
