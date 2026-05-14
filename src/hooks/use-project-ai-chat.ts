@@ -10,17 +10,23 @@ import {
 import type { PaginationParams } from "@/types";
 import {
   createProjectAiChatSession,
+  getProjectSpecification,
   listProjectAiChatMessages,
   listProjectAiChatSessions,
+  listProjectSpecifications,
   submitProjectAiRequirements,
   submitProjectAiRequirementsUpload,
   type AiTurnQueuedResponse,
   type CreateProjectAiChatSessionDto,
   type ProjectAiChatMessage,
   type ProjectAiChatSession,
+  type ProjectAiChatSessionWithProgress,
+  type ProjectSpecification,
 } from "@/api/projects.api";
 import type { PaginatedResponse } from "@/types";
 import { projectKeys } from "./use-projects";
+
+export type { ProjectAiChatSessionWithProgress, ProjectSpecification };
 
 const defaultMessagesLimit = 100;
 
@@ -117,5 +123,44 @@ export function useSubmitAiRequirementsUpload(
       invalidateAiChatQueries(queryClient, variables.projectId, variables.sessionId);
       onSuccess?.(data, variables, onMutateResult, context);
     },
+  });
+}
+
+export function useProjectAiChatSessionsWithProgress(
+  projectId: string,
+  params: PaginationParams = { page: 1, limit: 20 },
+  options?: Omit<UseQueryOptions<PaginatedResponse<ProjectAiChatSessionWithProgress>, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: [...projectKeys.aiChatSessions(projectId, params), "with-progress"],
+    queryFn: () => listProjectAiChatSessions(projectId, params) as Promise<PaginatedResponse<ProjectAiChatSessionWithProgress>>,
+    enabled: !!projectId,
+    ...options,
+  });
+}
+
+export function useProjectSpecifications(
+  projectId: string,
+  params: PaginationParams = { page: 1, limit: 20 },
+  options?: Omit<UseQueryOptions<PaginatedResponse<ProjectSpecification>, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: [...projectKeys.detail(projectId), "specifications", params],
+    queryFn: () => listProjectSpecifications(projectId, params),
+    enabled: !!projectId,
+    ...options,
+  });
+}
+
+export function useProjectSpecification(
+  projectId: string,
+  specificationId: string | null,
+  options?: Omit<UseQueryOptions<ProjectSpecification, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: [...projectKeys.detail(projectId), "specifications", specificationId],
+    queryFn: () => getProjectSpecification(projectId, specificationId!),
+    enabled: !!projectId && !!specificationId,
+    ...options,
   });
 }

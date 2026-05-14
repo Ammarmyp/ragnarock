@@ -22,7 +22,7 @@ export interface SrsRequirement {
   status: ReqStatus;
   linkedUserStoryId?: string;
   source: RequirementSource;
-  featureGroup: string;
+  featureGroup?: string;
   isNew?: boolean;
 }
 

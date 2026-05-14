@@ -7,6 +7,7 @@ import { z } from "zod";
 import { FolderKanban, LayoutGrid, List, Plus, Search } from "lucide-react";
 import { DashboardLayout } from "@/layouts/dashboard/dashboard-layout";
 import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } from "@/hooks/use-projects";
+import { authClient } from "@/lib/auth/auth-client";
 import type { Project } from "@/api/projects.api";
 import { ProjectListCard } from "@/layouts/dashboard/projects/project-list-card";
 import { createProjectListColumns } from "@/layouts/dashboard/projects/project-list-table-columns";
@@ -93,6 +94,7 @@ function ProjectListSkeleton() {
 }
 
 export function ProjectsPageLayout() {
+  const { data: activeOrg } = authClient.useActiveOrganization();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -118,12 +120,15 @@ export function ProjectsPageLayout() {
     isError,
     error,
     refetch,
-  } = useProjects({
-    page: isListView ? listPage : 1,
-    limit: isListView ? listLimit : 30,
-    search: trimmedSearch || undefined,
-    ...(statusFilter !== "all" ? { status: statusFilter } : {}),
-  });
+  } = useProjects(
+    {
+      page: isListView ? listPage : 1,
+      limit: isListView ? listLimit : 30,
+      search: trimmedSearch || undefined,
+      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+    },
+    { enabled: !!activeOrg?.id },
+  );
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();

@@ -13,228 +13,38 @@ import type {
   SrsSectionId,
   ValidationIssue,
 } from "@/features/requirements-workspace/types";
+import type { AgentPartialSrs, AgentRequirementPayload } from "@/api/projects.api";
 
 const stagesSeed: InterviewStage[] = [
-  { id: "problem", label: "Problem Definition", short: "Problem", completion: 1 },
-  { id: "stakeholders", label: "Users & Stakeholders", short: "Stakeholders", completion: 0.85 },
-  { id: "features", label: "Core Features", short: "Features", completion: 0.55 },
-  { id: "edge", label: "Edge Cases & Constraints", short: "Edge cases", completion: 0.2 },
-  { id: "nfr", label: "Non-Functional Requirements", short: "NFRs", completion: 0.1 },
+  { id: "problem", label: "Problem Definition", short: "Problem", completion: 0 },
+  { id: "stakeholders", label: "Users & Stakeholders", short: "Stakeholders", completion: 0 },
+  { id: "features", label: "Core Features", short: "Features", completion: 0 },
+  { id: "edge", label: "Edge Cases & Constraints", short: "Edge cases", completion: 0 },
+  { id: "nfr", label: "Non-Functional Requirements", short: "NFRs", completion: 0 },
   { id: "review", label: "Review & Validation", short: "Review", completion: 0 },
 ];
 
 const sectionsSeed: SrsSection[] = [
-  {
-    id: "project-overview",
-    label: "Project Overview",
-    description: "Vision, scope, and success criteria.",
-    items: [
-      {
-        id: "ov-1",
-        title: "Unified workspace for product discovery",
-        description:
-          "Single place where PM, BA, and QA align on requirements before build.",
-        type: "functional",
-        priority: "high",
-        status: "validated",
-        source: "user",
-        featureGroup: "Platform",
-      },
-    ],
-  },
-  {
-    id: "stakeholders",
-    label: "Stakeholders",
-    description: "Who is involved and who signs off.",
-    items: [
-      {
-        id: "st-1",
-        title: "Org admin approves SRS before export",
-        description: "Final sign-off from organization owner or delegate.",
-        type: "functional",
-        priority: "medium",
-        status: "draft",
-        source: "ai",
-        featureGroup: "Governance",
-      },
-    ],
-  },
-  {
-    id: "user-roles",
-    label: "User Roles",
-    description: "Primary actors and permissions.",
-    items: [
-      {
-        id: "ur-1",
-        title: "Product Manager — owns interview flow",
-        description: "Can run guided sessions, accept/reject AI proposals.",
-        type: "technical",
-        priority: "high",
-        status: "validated",
-        source: "imported",
-        featureGroup: "RBAC",
-      },
-      {
-        id: "ur-2",
-        title: "Viewer — read-only SRS",
-        description: "Stakeholders who comment but do not edit structure.",
-        type: "technical",
-        priority: "medium",
-        status: "draft",
-        source: "ai",
-        featureGroup: "RBAC",
-      },
-    ],
-  },
-  {
-    id: "user-stories",
-    label: "User Stories",
-    description: "Outcome-oriented backlog slices.",
-    items: [
-      {
-        id: "us-1",
-        title: "As a PM, I want guided questions so I don’t miss edge cases",
-        description: "Interview mode proposes next best question from gaps.",
-        type: "functional",
-        priority: "high",
-        status: "validated",
-        linkedUserStoryId: "us-1",
-        source: "user",
-        featureGroup: "Interview",
-      },
-    ],
-  },
-  {
-    id: "functional",
-    label: "Functional Requirements",
-    description: "Grouped by feature / module.",
-    items: [
-      {
-        id: "fr-1",
-        title: "SRS sections update in real time when AI extracts requirements",
-        description: "New items animate in and land under the correct module.",
-        type: "functional",
-        priority: "critical",
-        status: "draft",
-        linkedUserStoryId: "us-1",
-        source: "ai",
-        featureGroup: "Live SRS",
-      },
-      {
-        id: "fr-2",
-        title: "Structured assistant responses (summary → insights → question)",
-        description: "Assistant never returns unstructured blobs as the only signal.",
-        type: "functional",
-        priority: "high",
-        status: "draft",
-        source: "ai",
-        featureGroup: "Interview",
-      },
-      {
-        id: "fr-3",
-        title: "Multi-select suggestion chips with edit-before-send",
-        description: "User can toggle chips and tweak text before submitting.",
-        type: "functional",
-        priority: "medium",
-        status: "draft",
-        source: "user",
-        featureGroup: "Interview",
-      },
-    ],
-  },
-  {
-    id: "non-functional",
-    label: "Non-Functional Requirements",
-    description: "Performance, security, reliability.",
-    items: [
-      {
-        id: "nfr-1",
-        title: "P95 chat round-trip under 3s on broadband",
-        description: "Measured client-side; excludes model provider outages.",
-        type: "nfr",
-        priority: "medium",
-        status: "draft",
-        source: "ai",
-        featureGroup: "Performance",
-      },
-    ],
-  },
-  {
-    id: "assumptions",
-    label: "Assumptions & Constraints",
-    description: "Explicit assumptions to validate later.",
-    items: [
-      {
-        id: "as-1",
-        title: "Single org active per session",
-        description: "Cross-org SRS is out of scope for MVP.",
-        type: "technical",
-        priority: "low",
-        status: "draft",
-        source: "user",
-        featureGroup: "Scope",
-      },
-    ],
-  },
-  {
-    id: "risks",
-    label: "Risks",
-    description: "What could invalidate the spec.",
-    items: [
-      {
-        id: "rk-1",
-        title: "Ambiguous superlatives in chat (“fast”, “easy”)",
-        description: "Validation panel flags until converted to metrics.",
-        type: "nfr",
-        priority: "high",
-        status: "draft",
-        source: "ai",
-        featureGroup: "Quality",
-      },
-    ],
-  },
+  { id: "project-overview", label: "Project Overview", description: "Vision, scope, and success criteria.", items: [] },
+  { id: "stakeholders", label: "Stakeholders", description: "Who is involved and who signs off.", items: [] },
+  { id: "user-roles", label: "User Roles", description: "Primary actors and permissions.", items: [] },
+  { id: "user-stories", label: "User Stories", description: "Outcome-oriented backlog slices.", items: [] },
+  { id: "functional", label: "Functional Requirements", description: "Grouped by feature / module.", items: [] },
+  { id: "non-functional", label: "Non-Functional Requirements", description: "Performance, security, reliability.", items: [] },
+  { id: "assumptions", label: "Assumptions & Constraints", description: "Explicit assumptions to validate later.", items: [] },
+  { id: "risks", label: "Risks", description: "What could invalidate the spec.", items: [] },
 ];
 
-const validationSeed: ValidationIssue[] = [
-  {
-    id: "v1",
-    kind: "ambiguity",
-    title: '“Fast system” is not measurable',
-    detail: "Ask for latency targets (P95), throughput, or perceived speed metrics.",
-  },
-  {
-    id: "v2",
-    kind: "missing",
-    title: "Error handling for failed AI extraction",
-    detail: "Define fallback: retry, manual capture, or skip with audit log.",
-  },
-  {
-    id: "v3",
-    kind: "missing",
-    title: "Admin vs editor role for SRS approval",
-    detail: "Stakeholders section mentions approval but RBAC is incomplete.",
-  },
-  {
-    id: "v4",
-    kind: "conflict",
-    title: "Offline editing vs real-time sync",
-    detail: "Clarify whether offline drafts merge or overwrite server SRS.",
-  },
-];
+const validationSeed: ValidationIssue[] = [];
 
-const coverageSeed: CoverageRow[] = [
-  { feature: "Guided interview", roles: ["PM", "BA"], gap: "QA sign-off" },
-  { feature: "Live SRS", roles: ["PM", "Viewer"], gap: undefined },
-  { feature: "Export / Jira", roles: [], gap: "No owner" },
-];
+const coverageSeed: CoverageRow[] = [];
 
 const healthSeed: HealthScores = {
-  completeness: 72,
-  clarity: "medium",
+  completeness: 0,
+  clarity: "low",
   riskLevel: "low",
 };
 
-/** Start empty so the interview hero + mesh gradient can shine; first reply is simulated after send. */
 const initialMessages: ChatMessage[] = [];
 
 function uid() {
@@ -243,7 +53,6 @@ function uid() {
 
 export interface RequirementsWorkspaceState {
   projectId: string | null;
-  /** Backend Nest `ProjectAiChatSession` id when wired to persisted AI chat; drives Socket.IO sync. */
   backendAiChatSessionId: string | null;
   stages: InterviewStage[];
   activeStageIndex: number;
@@ -259,6 +68,15 @@ export interface RequirementsWorkspaceState {
   health: HealthScores;
   insightSuggestions: string[];
 
+  isProcessing: boolean;
+  agentError: string | null;
+  completedSpecId: string | null;
+  completedSpec: AgentRequirementPayload | null;
+  partialSrs: AgentPartialSrs | null;
+  srsProgress: number;
+  /** Latest persisted spec for this project — survives session switches and resets. */
+  baseSpec: AgentRequirementPayload | null;
+
   setProjectId: (id: string | null) => void;
   setBackendAiChatSessionId: (id: string | null) => void;
   setChatMode: (mode: ChatMode) => void;
@@ -273,8 +91,23 @@ export interface RequirementsWorkspaceState {
   simulateAssistantReply: () => void;
   toggleSuggestion: (text: string) => void;
   clearSuggestions: () => void;
-  /** Demo: advance stage slightly */
   bumpStageProgress: () => void;
+
+  setProcessing: (v: boolean) => void;
+  setAgentError: (err: string | null) => void;
+  appendBackendUserMessage: (text: string, messageId: string) => void;
+  applyPartialSrs: (partial: AgentPartialSrs, questions: string[], assistantMessageId: string) => void;
+  applyCompletedSrs: (spec: AgentRequirementPayload, specId: string, assistantMessageId: string) => void;
+  hydrateSession: (params: {
+    sessionId: string;
+    messages: { id: string; role: "user" | "assistant"; content: string; payload?: unknown; createdAt: string }[];
+    partialSrs: AgentPartialSrs | null;
+    srsProgress: number;
+    completedSpec: AgentRequirementPayload | null;
+    completedSpecId: string | null;
+  }) => void;
+  resetSession: () => void;
+  setBaseSpec: (spec: AgentRequirementPayload | null) => void;
 }
 
 const defaultExpanded: Record<SrsSectionId, boolean> = {
@@ -292,22 +125,26 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
   projectId: null,
   backendAiChatSessionId: null,
   stages: stagesSeed,
-  activeStageIndex: 2,
+  activeStageIndex: 0,
   chatMode: "guided",
   reviewMode: false,
   sections: sectionsSeed,
-  selectedRequirementId: "fr-1",
+  selectedRequirementId: null,
   expandedSections: defaultExpanded,
   messages: initialMessages,
   suggestionSelection: [],
   validation: validationSeed,
   coverage: coverageSeed,
   health: healthSeed,
-  insightSuggestions: [
-    "Add payment failure handling and retry policy",
-    "Define onboarding flow for first-time PM users",
-    "Specify performance benchmarks for concurrent interviews",
-  ],
+  insightSuggestions: [],
+
+  isProcessing: false,
+  agentError: null,
+  completedSpecId: null,
+  completedSpec: null,
+  partialSrs: null,
+  srsProgress: 0,
+  baseSpec: null,
 
   setProjectId: (id) => set({ projectId: id }),
   setBackendAiChatSessionId: (id) => set({ backendAiChatSessionId: id }),
@@ -427,4 +264,173 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
       );
       return { stages };
     }),
+
+  setProcessing: (v) => set({ isProcessing: v, agentError: null }),
+  setAgentError: (err) => set({ agentError: err, isProcessing: false }),
+
+  appendBackendUserMessage: (text, messageId) =>
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        { id: messageId, role: "user" as const, content: text, createdAt: Date.now() },
+      ],
+      isProcessing: true,
+      agentError: null,
+    })),
+
+  applyPartialSrs: (partial, questions, assistantMessageId) =>
+    set((s) => {
+      const progress = computeProgressFromPartial(partial);
+      const stageIndex = progressToStageIndex(progress);
+      const stages = s.stages.map((st, i) => ({
+        ...st,
+        completion: i < stageIndex ? 1 : i === stageIndex ? Math.min(1, progress / 100) : st.completion,
+      }));
+      const questionText = questions.length === 1
+        ? questions[0]
+        : questions.map((q, i) => `${i + 1}. ${q}`).join("\n\n");
+      const assistantMsg: ChatMessage = {
+        id: assistantMessageId,
+        role: "assistant" as const,
+        createdAt: Date.now(),
+        structured: {
+          contextSummary: `SRS is ${progress}% complete.`,
+          extractedInsights: partial.features?.map((f) => f.name) ?? [],
+          nextQuestion: questionText,
+          whyQuestion: "Filling in the missing sections to complete the SRS.",
+        },
+      };
+      return {
+        messages: [...s.messages, assistantMsg],
+        partialSrs: partial,
+        srsProgress: progress,
+        stages,
+        isProcessing: false,
+        agentError: null,
+        health: { ...s.health, completeness: progress },
+      };
+    }),
+
+  applyCompletedSrs: (spec, specId, assistantMessageId) =>
+    set((s) => {
+      const assistantMsg: ChatMessage = {
+        id: assistantMessageId,
+        role: "assistant" as const,
+        createdAt: Date.now(),
+        structured: {
+          contextSummary: spec.business_owner_summary,
+          extractedInsights: spec.features.map((f) => f.name),
+          nextQuestion: "Please review the specification above and confirm it matches your vision.",
+          whyQuestion: "This is the final SRS ready for developer handoff.",
+        },
+      };
+      const stages = s.stages.map((st) => ({ ...st, completion: 1 }));
+      return {
+        messages: [...s.messages, assistantMsg],
+        completedSpec: spec,
+        completedSpecId: specId,
+        baseSpec: spec,
+        srsProgress: 100,
+        partialSrs: null,
+        stages,
+        isProcessing: false,
+        agentError: null,
+        health: { completeness: 100, clarity: "high" as const, riskLevel: "low" as const },
+      };
+    }),
+
+  hydrateSession: ({ sessionId, messages, partialSrs, srsProgress, completedSpec, completedSpecId }) =>
+    set((s) => {
+      const chatMessages: ChatMessage[] = messages.map((m) => {
+        if (m.role === "user") {
+          return { id: m.id, role: "user" as const, content: m.content, createdAt: new Date(m.createdAt).getTime() };
+        }
+        // Assistant — reconstruct structured shape from payload if present, else wrap content
+        const payload = m.payload as Record<string, unknown> | null | undefined;
+        const structured = payload?.status === "needs_clarification"
+          ? {
+              contextSummary: `SRS is ${srsProgress}% complete.`,
+              extractedInsights: (payload.partial_srs as Record<string, unknown> | undefined)?.features
+                ? ((payload.partial_srs as Record<string, { name: string }[]>).features ?? []).map((f) => f.name)
+                : [],
+              nextQuestion: m.content,
+              whyQuestion: "Filling in the missing sections to complete the SRS.",
+            }
+          : payload?.status === "complete"
+          ? {
+              contextSummary: (payload.business_owner_summary as string) ?? m.content,
+              extractedInsights: ((payload.features as { name: string }[]) ?? []).map((f) => f.name),
+              nextQuestion: "Please review the specification above and confirm it matches your vision.",
+              whyQuestion: "This is the final SRS ready for developer handoff.",
+            }
+          : {
+              contextSummary: "",
+              extractedInsights: [],
+              nextQuestion: m.content,
+              whyQuestion: "",
+            };
+        return { id: m.id, role: "assistant" as const, createdAt: new Date(m.createdAt).getTime(), structured };
+      });
+
+      const progress = completedSpec ? 100 : srsProgress;
+      const stageIndex = progressToStageIndex(progress);
+      const stages = s.stages.map((st, i) => ({
+        ...st,
+        completion: completedSpec ? 1 : i < stageIndex ? 1 : i === stageIndex ? Math.min(1, progress / 100) : st.completion,
+      }));
+
+      return {
+        backendAiChatSessionId: sessionId,
+        messages: chatMessages,
+        partialSrs,
+        srsProgress: progress,
+        completedSpec,
+        completedSpecId,
+        stages,
+        isProcessing: false,
+        agentError: null,
+        health: { ...s.health, completeness: progress },
+      };
+    }),
+
+  resetSession: () =>
+    set((s) => ({
+      backendAiChatSessionId: null,
+      messages: [],
+      partialSrs: null,
+      srsProgress: s.baseSpec ? 100 : 0,
+      completedSpec: null,
+      completedSpecId: null,
+      isProcessing: false,
+      agentError: null,
+      // If there's a baseSpec, reflect completed state — all stages done, on the last stage
+      stages: s.baseSpec ? stagesSeed.map((st) => ({ ...st, completion: 1 })) : stagesSeed,
+      activeStageIndex: s.baseSpec ? stagesSeed.length - 1 : 0,
+      health: { ...s.health, completeness: s.baseSpec ? 100 : 0 },
+    })),
+
+  setBaseSpec: (spec) => set({ baseSpec: spec }),
 }));
+
+function computeProgressFromPartial(p: AgentPartialSrs): number {
+  const fields: (keyof AgentPartialSrs)[] = [
+    "project_name", "summary", "features", "user_roles",
+    "functional_requirements", "non_functional_requirements",
+    "user_stories", "acceptance_criteria", "out_of_scope",
+  ];
+  const filled = fields.filter((f) => {
+    const v = p[f];
+    if (v === null || v === undefined) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    return Boolean(v);
+  });
+  return Math.round((filled.length / fields.length) * 100);
+}
+
+function progressToStageIndex(pct: number): number {
+  if (pct < 34) return 0;
+  if (pct < 56) return 1;
+  if (pct < 78) return 2;
+  if (pct < 100) return 3;
+  return 5;
+}

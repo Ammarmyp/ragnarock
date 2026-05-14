@@ -762,3 +762,67 @@ export async function submitProjectAiRequirementsUpload(
   });
   return parseResponseData<AiTurnQueuedResponse>(response);
 }
+
+// ─── Project specifications ──────────────────────────────────────────────────
+
+export type AgentPartialSrs = {
+  project_name?: string | null;
+  summary?: string | null;
+  features?: { name: string; description: string }[];
+  user_roles?: string[];
+  functional_requirements?: string[];
+  non_functional_requirements?: string[];
+  user_stories?: { role: string; goal: string; benefit: string }[];
+  acceptance_criteria?: string[];
+  out_of_scope?: string[];
+};
+
+export interface ProjectAiChatSessionWithProgress extends ProjectAiChatSession {
+  partialSrs?: AgentPartialSrs | null;
+  srsProgress: number;
+}
+
+export interface ProjectSpecification {
+  id: string;
+  projectId: string;
+  chatSessionId?: string | null;
+  createdBy: string;
+  title?: string | null;
+  payload: AgentRequirementPayload;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; name?: string | null; email?: string | null };
+}
+
+export interface AgentRequirementPayload {
+  status: "complete";
+  project_name: string;
+  summary: string;
+  features: { name: string; description: string }[];
+  functional_requirements: string[];
+  non_functional_requirements: string[];
+  user_stories: { role: string; goal: string; benefit: string }[];
+  acceptance_criteria: string[];
+  out_of_scope?: string[];
+  business_owner_summary: string;
+}
+
+export async function listProjectSpecifications(
+  projectId: string,
+  params: PaginationParams = { page: 1, limit: 20 },
+): Promise<PaginatedResponse<ProjectSpecification>> {
+  const response = await apiClient.get<unknown>(
+    `${PROJECT_ENDPOINTS.SPECIFICATIONS(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
+  );
+  return parseResponseData<PaginatedResponse<ProjectSpecification>>(response);
+}
+
+export async function getProjectSpecification(
+  projectId: string,
+  specificationId: string,
+): Promise<ProjectSpecification> {
+  const response = await apiClient.get<unknown>(
+    PROJECT_ENDPOINTS.SPECIFICATION(projectId, specificationId),
+  );
+  return parseResponseData<ProjectSpecification>(response);
+}
