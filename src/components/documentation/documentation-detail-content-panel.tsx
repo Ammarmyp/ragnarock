@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { DocumentationMdEditor } from "@/components/documentation/documentation-md-editor";
 import { MarkdownContent } from "@/components/documentation/markdown-content";
+import { SrsDocumentBody } from "@/components/requirements-workspace/srs-document-body";
 import type { ProjectDocumentation } from "@/api/projects.api";
 import { toast } from "@/lib/toast";
 import { copyToClipboard } from "@/utils/helpers";
@@ -116,7 +117,15 @@ export function DocumentationDetailContentPanel({
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-        <MarkdownContent content={doc.content} />
+        {doc.type === "srs" ? (
+          <SrsDocumentBody
+            markdown={doc.content}
+            status="complete"
+            displayProgress={100}
+          />
+        ) : (
+          <MarkdownContent content={doc.content} />
+        )}
       </div>
 
       <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>

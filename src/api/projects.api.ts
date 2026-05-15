@@ -782,6 +782,17 @@ export interface ProjectAiChatSessionWithProgress extends ProjectAiChatSession {
   srsProgress: number;
 }
 
+/** The project's single shared draft SRS — every new chat continues from this. */
+export interface ProjectAiDraft {
+  draftSrs: AgentPartialSrs | null;
+  draftSrsProgress: number;
+}
+
+export async function getProjectAiDraft(projectId: string): Promise<ProjectAiDraft> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.AI_DRAFT(projectId));
+  return parseResponseData<ProjectAiDraft>(response);
+}
+
 export interface ProjectSpecification {
   id: string;
   projectId: string;

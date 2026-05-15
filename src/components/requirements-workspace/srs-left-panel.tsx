@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  Expand,
   FileText,
   GitBranch,
   List,
@@ -13,7 +14,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { SrsDocumentBody, buildSrsMarkdown } from "@/components/requirements-workspace/srs-document-body";
 import type { SrsRequirement } from "@/features/requirements-workspace/types";
 import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
 
@@ -36,225 +44,91 @@ function groupByFeature(items: SrsRequirement[]) {
   return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
-function buildSrsMarkdown(
-  partialSrs: ReturnType<typeof useRequirementsWorkspaceStore.getState>["partialSrs"],
-  completedSpec: ReturnType<typeof useRequirementsWorkspaceStore.getState>["completedSpec"],
-  srsProgress: number,
-): string {
-  if (completedSpec) {
-    const lines: string[] = [];
-    lines.push(`# ${completedSpec.project_name}`);
-    lines.push("");
-    lines.push("## Summary");
-    lines.push(completedSpec.summary);
-    lines.push("");
 
-    if (completedSpec.features.length > 0) {
-      lines.push("## Features");
-      for (const f of completedSpec.features) {
-        lines.push(`- **${f.name}**: ${f.description}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.user_stories.length > 0) {
-      lines.push("## User Stories");
-      for (const us of completedSpec.user_stories) {
-        lines.push(`- As a **${us.role}**, I want to ${us.goal} so that ${us.benefit}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.functional_requirements.length > 0) {
-      lines.push("## Functional Requirements");
-      for (const fr of completedSpec.functional_requirements) {
-        lines.push(`- ${fr}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.non_functional_requirements.length > 0) {
-      lines.push("## Non-Functional Requirements");
-      for (const nfr of completedSpec.non_functional_requirements) {
-        lines.push(`- ${nfr}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.acceptance_criteria.length > 0) {
-      lines.push("## Acceptance Criteria");
-      for (const ac of completedSpec.acceptance_criteria) {
-        lines.push(`- ${ac}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.out_of_scope && completedSpec.out_of_scope.length > 0) {
-      lines.push("## Out of Scope");
-      for (const oos of completedSpec.out_of_scope) {
-        lines.push(`- ${oos}`);
-      }
-      lines.push("");
-    }
-
-    if (completedSpec.business_owner_summary) {
-      lines.push("## Business Owner Summary");
-      lines.push(completedSpec.business_owner_summary);
-    }
-
-    return lines.join("\n");
-  }
-
-  if (!partialSrs) {
-    return "_Start the interview to begin building your SRS._";
-  }
-
-  const lines: string[] = [];
-  lines.push(`# ${partialSrs.project_name ?? "Untitled Project"}`);
-  lines.push(`> **Status:** In Progress (${srsProgress}%)`);
-  lines.push("");
-
-  if (partialSrs.summary) {
-    lines.push("## Summary");
-    lines.push(partialSrs.summary);
-    lines.push("");
-  }
-
-  if (partialSrs.features && partialSrs.features.length > 0) {
-    lines.push("## Features");
-    for (const f of partialSrs.features) {
-      lines.push(`- **${f.name}**: ${f.description}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.user_roles && partialSrs.user_roles.length > 0) {
-    lines.push("## User Roles");
-    for (const r of partialSrs.user_roles) {
-      lines.push(`- ${r}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.functional_requirements && partialSrs.functional_requirements.length > 0) {
-    lines.push("## Functional Requirements");
-    for (const fr of partialSrs.functional_requirements) {
-      lines.push(`- ${fr}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.user_stories && partialSrs.user_stories.length > 0) {
-    lines.push("## User Stories");
-    for (const us of partialSrs.user_stories) {
-      lines.push(`- As a **${us.role}**, I want to ${us.goal} so that ${us.benefit}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.acceptance_criteria && partialSrs.acceptance_criteria.length > 0) {
-    lines.push("## Acceptance Criteria");
-    for (const ac of partialSrs.acceptance_criteria) {
-      lines.push(`- ${ac}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.non_functional_requirements && partialSrs.non_functional_requirements.length > 0) {
-    lines.push("## Non-Functional Requirements");
-    for (const nfr of partialSrs.non_functional_requirements) {
-      lines.push(`- ${nfr}`);
-    }
-    lines.push("");
-  }
-
-  if (partialSrs.out_of_scope && partialSrs.out_of_scope.length > 0) {
-    lines.push("## Out of Scope");
-    for (const oos of partialSrs.out_of_scope) {
-      lines.push(`- ${oos}`);
-    }
-    lines.push("");
-  }
-
-  const missing: string[] = [];
-  if (!partialSrs.project_name) missing.push("Project name");
-  if (!partialSrs.summary) missing.push("Summary");
-  if (!partialSrs.features?.length) missing.push("Features");
-  if (!partialSrs.user_roles?.length) missing.push("User roles");
-  if (!partialSrs.functional_requirements?.length) missing.push("Functional requirements");
-  if (!partialSrs.user_stories?.length) missing.push("User stories");
-  if (!partialSrs.acceptance_criteria?.length) missing.push("Acceptance criteria");
-  if (!partialSrs.non_functional_requirements?.length) missing.push("Non-functional requirements");
-
-  if (missing.length > 0) {
-    lines.push("---");
-    lines.push("## Still Needed");
-    for (const m of missing) {
-      lines.push(`- [ ] ${m}`);
-    }
-  }
-
-  return lines.join("\n");
-}
-
-function DocumentView() {
+function DocumentView({ onExpand }: { onExpand: () => void }) {
   const partialSrs = useRequirementsWorkspaceStore((s) => s.partialSrs);
   const completedSpec = useRequirementsWorkspaceStore((s) => s.completedSpec);
   const baseSpec = useRequirementsWorkspaceStore((s) => s.baseSpec);
   const srsProgress = useRequirementsWorkspaceStore((s) => s.srsProgress);
   const isProcessing = useRequirementsWorkspaceStore((s) => s.isProcessing);
 
-  // Show session spec if present, otherwise fall back to the latest persisted project spec
   const displaySpec = completedSpec ?? baseSpec;
   const displayProgress = displaySpec ? 100 : srsProgress;
 
   const markdown = useMemo(
-    () => buildSrsMarkdown(partialSrs, displaySpec, displayProgress),
-    [partialSrs, displaySpec, displayProgress],
+    () => buildSrsMarkdown(partialSrs, displaySpec),
+    [partialSrs, displaySpec],
   );
 
   const status = displaySpec ? "complete" : partialSrs ? "in_progress" : "not_started";
 
   return (
-    <div className="flex h-full flex-col gap-3 px-3 py-3">
-      <div className="flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={status === "complete" ? "default" : status === "in_progress" ? "secondary" : "outline"}
-            className={cn(
-              "text-xs font-normal",
-              status === "complete" && "bg-emerald-600 text-white",
-            )}
-          >
-            {status === "complete" ? "Complete" : status === "in_progress" ? "In Progress" : "Not Started"}
-          </Badge>
-          {isProcessing && (
-            <span className="text-muted-foreground text-xs">Updating...</span>
-          )}
-        </div>
-        <span className="text-muted-foreground tabular-nums text-xs">{displayProgress}%</span>
+    <div className="flex h-full flex-col gap-2 px-3 py-3">
+      {/* Expand button row */}
+      <div className="flex shrink-0 justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onExpand}
+          title="Expand document"
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Expand className="size-3.5" />
+        </Button>
       </div>
 
-      <div className="shrink-0">
-        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-          <motion.div
-            className={cn(
-              "h-full rounded-full",
-              status === "complete" ? "bg-emerald-500" : "bg-primary/80",
-            )}
-            initial={false}
-            animate={{ width: `${displayProgress}%` }}
-            transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          />
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-foreground/90">
-          {markdown}
-        </pre>
+      {/* Shared document body — same rendering as the modal */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+        <SrsDocumentBody
+          markdown={markdown}
+          status={status}
+          displayProgress={displayProgress}
+          isProcessing={isProcessing}
+        />
       </div>
     </div>
+  );
+}
+
+function SrsDocumentModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const partialSrs = useRequirementsWorkspaceStore((s) => s.partialSrs);
+  const completedSpec = useRequirementsWorkspaceStore((s) => s.completedSpec);
+  const baseSpec = useRequirementsWorkspaceStore((s) => s.baseSpec);
+  const srsProgress = useRequirementsWorkspaceStore((s) => s.srsProgress);
+  const isProcessing = useRequirementsWorkspaceStore((s) => s.isProcessing);
+
+  const displaySpec = completedSpec ?? baseSpec;
+  const displayProgress = displaySpec ? 100 : srsProgress;
+  const markdown = useMemo(
+    () => buildSrsMarkdown(partialSrs, displaySpec),
+    [partialSrs, displaySpec],
+  );
+  const status = displaySpec ? "complete" : partialSrs ? "in_progress" : "not_started";
+  const title = displaySpec?.project_name ?? partialSrs?.project_name ?? "SRS Document";
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="flex h-[90dvh] max-h-[90dvh] w-[min(90vw,900px)] max-w-[min(90vw,900px)] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
+          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <SrsDocumentBody
+            markdown={markdown}
+            status={status}
+            displayProgress={displayProgress}
+            isProcessing={isProcessing}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -293,6 +167,7 @@ function RequirementRow({
 
 export function SrsLeftPanel({ onCollapse }: { onCollapse?: () => void }) {
   const [activeTab, setActiveTab] = useState<PanelTab>("sections");
+  const [docModalOpen, setDocModalOpen] = useState(false);
 
   const sections = useRequirementsWorkspaceStore((s) => s.sections);
   const expandedSections = useRequirementsWorkspaceStore((s) => s.expandedSections);
@@ -612,9 +487,11 @@ export function SrsLeftPanel({ onCollapse }: { onCollapse?: () => void }) {
             </div>
           </div>
         ) : (
-          <DocumentView />
+          <DocumentView onExpand={() => setDocModalOpen(true)} />
         )}
       </div>
+
+      <SrsDocumentModal open={docModalOpen} onClose={() => setDocModalOpen(false)} />
     </Card>
   );
 }

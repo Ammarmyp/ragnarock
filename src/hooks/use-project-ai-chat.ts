@@ -10,6 +10,7 @@ import {
 import type { PaginationParams } from "@/types";
 import {
   createProjectAiChatSession,
+  getProjectAiDraft,
   getProjectSpecification,
   listProjectAiChatMessages,
   listProjectAiChatSessions,
@@ -21,12 +22,27 @@ import {
   type ProjectAiChatMessage,
   type ProjectAiChatSession,
   type ProjectAiChatSessionWithProgress,
+  type ProjectAiDraft,
   type ProjectSpecification,
 } from "@/api/projects.api";
 import type { PaginatedResponse } from "@/types";
 import { projectKeys } from "./use-projects";
 
-export type { ProjectAiChatSessionWithProgress, ProjectSpecification };
+export type { ProjectAiChatSessionWithProgress, ProjectAiDraft, ProjectSpecification };
+
+/** The project's single shared draft SRS — what every new chat continues from. */
+export function useProjectAiDraft(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectAiDraft, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.aiDraft(projectId),
+    queryFn: () => getProjectAiDraft(projectId),
+    enabled: !!projectId,
+    staleTime: 0,
+    ...options,
+  });
+}
 
 const defaultMessagesLimit = 100;
 

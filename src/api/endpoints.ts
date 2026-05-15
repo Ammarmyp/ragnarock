@@ -66,6 +66,8 @@ export const PROJECT_ENDPOINTS = {
     `/projects/${projectId}/ai/chat/sessions/${sessionId}/messages`,
   AI_REQUIREMENTS: (projectId: string) => `/projects/${projectId}/ai/requirements`,
   AI_REQUIREMENTS_UPLOAD: (projectId: string) => `/projects/${projectId}/ai/requirements/upload`,
+  /** The project's single shared draft SRS — what every new chat continues from. */
+  AI_DRAFT: (projectId: string) => `/projects/${projectId}/ai/draft`,
   SPECIFICATIONS: (projectId: string) => `/projects/${projectId}/specifications`,
   SPECIFICATION: (projectId: string, specificationId: string) =>
     `/projects/${projectId}/specifications/${specificationId}`,

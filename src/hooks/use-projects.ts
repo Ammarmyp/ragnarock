@@ -93,6 +93,7 @@ export const projectKeys = {
     [...projectKeys.detail(projectId), "ai-chat-messages", sessionId, params] as const,
   specifications: (projectId: string, params: PaginationParams) =>
     [...projectKeys.detail(projectId), "specifications", params] as const,
+  aiDraft: (projectId: string) => [...projectKeys.detail(projectId), "ai-draft"] as const,
 };
 
 export function invalidateProjectOverview(queryClient: QueryClient, projectId: string) {

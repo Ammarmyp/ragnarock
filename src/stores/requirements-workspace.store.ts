@@ -106,7 +106,7 @@ export interface RequirementsWorkspaceState {
     completedSpec: AgentRequirementPayload | null;
     completedSpecId: string | null;
   }) => void;
-  resetSession: () => void;
+  resetSession: (projectDraft?: { partialSrs: AgentPartialSrs | null; progress: number }) => void;
   setBaseSpec: (spec: AgentRequirementPayload | null) => void;
 }
 
@@ -393,21 +393,42 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
       };
     }),
 
-  resetSession: () =>
-    set((s) => ({
-      backendAiChatSessionId: null,
-      messages: [],
-      partialSrs: null,
-      srsProgress: s.baseSpec ? 100 : 0,
-      completedSpec: null,
-      completedSpecId: null,
-      isProcessing: false,
-      agentError: null,
-      // If there's a baseSpec, reflect completed state — all stages done, on the last stage
-      stages: s.baseSpec ? stagesSeed.map((st) => ({ ...st, completion: 1 })) : stagesSeed,
-      activeStageIndex: s.baseSpec ? stagesSeed.length - 1 : 0,
-      health: { ...s.health, completeness: s.baseSpec ? 100 : 0 },
-    })),
+  resetSession: (projectDraft) =>
+    set((s) => {
+      // A new chat always continues from the project's shared draft SRS. Prefer
+      // the explicitly passed draft; otherwise fall back to whatever the store
+      // already holds (completed baseSpec, then current partial).
+      const draftPartial = projectDraft ? projectDraft.partialSrs : s.partialSrs;
+      const inheritedProgress = s.baseSpec
+        ? 100
+        : projectDraft
+          ? projectDraft.progress
+          : computeProgressFromPartial(s.partialSrs ?? ({} as AgentPartialSrs));
+      const inheritedStageIndex = progressToStageIndex(inheritedProgress);
+      const stages = stagesSeed.map((st, i) => ({
+        ...st,
+        completion: s.baseSpec
+          ? 1
+          : i < inheritedStageIndex
+            ? 1
+            : i === inheritedStageIndex
+              ? Math.min(1, inheritedProgress / 100)
+              : 0,
+      }));
+      return {
+        backendAiChatSessionId: null,
+        messages: [],
+        partialSrs: s.baseSpec ? null : draftPartial,
+        srsProgress: inheritedProgress,
+        completedSpec: null,
+        completedSpecId: null,
+        isProcessing: false,
+        agentError: null,
+        stages,
+        activeStageIndex: s.baseSpec ? stagesSeed.length - 1 : inheritedStageIndex,
+        health: { ...s.health, completeness: inheritedProgress },
+      };
+    }),
 
   setBaseSpec: (spec) => set({ baseSpec: spec }),
 }));

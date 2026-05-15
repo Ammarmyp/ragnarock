@@ -29,6 +29,12 @@ export function ProjectAiChatRealtimeSync(props: { projectId: string; sessionId:
         queryKey: [...projectKeys.detail(props.projectId), "ai-chat-messages", props.sessionId],
       });
       void queryClient.invalidateQueries({
+        queryKey: [...projectKeys.detail(props.projectId), "ai-chat-sessions"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: projectKeys.aiDraft(props.projectId),
+      });
+      void queryClient.invalidateQueries({
         queryKey: [...projectKeys.detail(props.projectId), "specifications"],
       });
 

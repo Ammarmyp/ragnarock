@@ -10,10 +10,11 @@ import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.s
 import {
   useProjectAiChatSessions,
   useProjectAiChatMessages,
+  useProjectAiDraft,
   useProjectSpecifications,
 } from "@/hooks/use-project-ai-chat";
 import { cn } from "@/lib/utils";
-import type { AgentPartialSrs, AgentRequirementPayload } from "@/api/projects.api";
+import type { AgentRequirementPayload } from "@/api/projects.api";
 
 type RequirementsIntelligenceWorkspaceProps = {
   projectId: string;
@@ -42,12 +43,16 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
     return () => setProjectId(null);
   }, [projectId, setProjectId]);
 
-  const { data: sessionsPage } = useProjectAiChatSessions(projectId, { page: 1, limit: 30 });
+  const { data: sessionsPage } = useProjectAiChatSessions(projectId, { page: 1, limit: 30 }, { staleTime: 0 });
   const sessions = sessionsPage?.data ?? [];
 
   // Fetch the latest completed specification for this project
   const { data: specsPage } = useProjectSpecifications(projectId, { page: 1, limit: 1 });
   const latestSpec = specsPage?.data?.[0] ?? null;
+
+  // The project's single shared draft SRS — every chat (new or resumed) continues
+  // from this. It is the source of truth for the Live SRS panel and stage progress.
+  const { data: projectDraft } = useProjectAiDraft(projectId);
 
   // Set baseSpec once when the latest spec loads — persists across session switches
   useEffect(() => {
@@ -64,7 +69,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
     projectId,
     targetSessionId,
     { page: 1, limit: 200 },
-    { enabled: !!targetSessionId },
+    { enabled: !!targetSessionId, staleTime: 0 },
   );
 
   // Auto-restore most recent session on first mount
@@ -76,16 +81,13 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
     setLoadingSessionId(mostRecent.id);
   }, [sessions]);
 
-  // Hydrate store once messages arrive for the target session
+  // Hydrate store once messages arrive for the target session.
+  // The draft SRS / progress always come from the project-level draft so the
+  // Live SRS panel and stage tracker continue from prior conversations.
   useEffect(() => {
-    if (!targetSessionId || !messagesPage) return;
+    if (!targetSessionId || !messagesPage || !projectDraft) return;
     const session = sessions.find((s) => s.id === targetSessionId);
     if (!session) return;
-
-    const sessionWithProgress = session as typeof session & {
-      partialSrs?: AgentPartialSrs | null;
-      srsProgress?: number;
-    };
 
     const msgs = messagesPage.data;
     const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant");
@@ -96,17 +98,21 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
     hydrateSession({
       sessionId: targetSessionId,
       messages: msgs,
-      partialSrs: isComplete ? null : (sessionWithProgress.partialSrs ?? null),
-      srsProgress: sessionWithProgress.srsProgress ?? 0,
+      partialSrs: isComplete ? null : projectDraft.draftSrs,
+      srsProgress: projectDraft.draftSrsProgress,
       completedSpec,
       completedSpecId: null,
     });
     setLoadingSessionId(null);
-  }, [messagesPage, targetSessionId, sessions, hydrateSession]);
+  }, [messagesPage, targetSessionId, sessions, projectDraft, hydrateSession]);
 
   const handleNewSession = () => {
     hydratedRef.current = null;
-    resetSession();
+    resetSession(
+      projectDraft
+        ? { partialSrs: projectDraft.draftSrs, progress: projectDraft.draftSrsProgress }
+        : undefined,
+    );
   };
 
   const handleSelectSession = (sessionId: string) => {
