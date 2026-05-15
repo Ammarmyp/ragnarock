@@ -5,9 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Check,
+  Clock,
   HelpCircle,
   Loader2,
-  MessageSquare,
+  MessageCirclePlus,
   Send,
   Sparkles,
   X,
@@ -17,6 +18,14 @@ import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -32,75 +41,106 @@ import {
   useSubmitAiRequirementsTurn,
 } from "@/hooks/use-project-ai-chat";
 import { useProject } from "@/hooks/use-projects";
+import type { AgentSessionType, ProjectAiChatSession } from "@/api/projects.api";
 
 const MeshGradient = dynamic(
   () => import("@paper-design/shaders-react").then((mod) => ({ default: mod.MeshGradient })),
   { ssr: false },
 );
 
-function StageBar() {
+export function StageBar() {
   const stages = useRequirementsWorkspaceStore((s) => s.stages);
   const activeStageIndex = useRequirementsWorkspaceStore((s) => s.activeStageIndex);
   const srsProgress = useRequirementsWorkspaceStore((s) => s.srsProgress);
   const baseSpec = useRequirementsWorkspaceStore((s) => s.baseSpec);
   const completedSpec = useRequirementsWorkspaceStore((s) => s.completedSpec);
-  const active = stages[activeStageIndex];
-  const overall = srsProgress / 100;
 
-  // When an SRS exists (from this or a prior session), show a compact "refining" bar
-  // instead of the interview stage tracker — the interview is done.
   const hasSpec = !!(completedSpec ?? baseSpec);
+
   if (hasSpec) {
     return (
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-xs font-medium">
-          <span className="inline-flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-emerald-500 inline-block" />
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
             SRS complete — continue refining
           </span>
-        </p>
-        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">100%</span>
+          <span className="text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">100%</span>
+        </div>
+        <div className="h-1 overflow-hidden rounded-full bg-muted">
+          <motion.div
+            className="h-full rounded-full bg-emerald-500"
+            initial={false}
+            animate={{ width: "100%" }}
+            transition={{ type: "spring", stiffness: 260, damping: 28 }}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
+      {/* Progress bar + label */}
       <div className="flex items-center justify-between gap-2">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Stage {activeStageIndex + 1} of {stages.length}
-          {active ? (
-            <span className="text-foreground ml-1 font-normal normal-case">
-              {" · "}{active.label}
-            </span>
-          ) : null}
-        </p>
-        <span className="text-muted-foreground text-xs tabular-nums">{srsProgress}%</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          Stage <span className="tabular-nums text-foreground">{activeStageIndex + 1}</span>
+          <span className="mx-1 opacity-40">/</span>
+          <span className="tabular-nums">{stages.length}</span>
+          {stages[activeStageIndex] && (
+            <span className="ml-1.5 text-foreground/70">· {stages[activeStageIndex].label}</span>
+          )}
+        </span>
+        <span className="tabular-nums text-xs font-semibold text-foreground/60">{srsProgress}%</span>
       </div>
-      <div className="bg-muted h-1 overflow-hidden rounded-full">
-        <motion.div
-          className="from-primary to-primary/70 h-full rounded-full bg-linear-to-r"
-          initial={false}
-          animate={{ width: `${Math.round(overall * 100)}%` }}
-          transition={{ type: "spring", stiffness: 260, damping: 28 }}
-        />
-      </div>
-      <div className="flex gap-0.5 overflow-x-auto pb-0.5 scrollbar-none">
+
+      {/* Segmented track */}
+      <div className="flex items-center gap-0.5">
         {stages.map((st, i) => {
-          const on = i === activeStageIndex;
-          const done = st.completion >= 0.95;
+          const done = i < activeStageIndex || st.completion >= 0.95;
+          const active = i === activeStageIndex;
           return (
-            <div
-              key={st.id}
-              className={cn(
-                "min-w-[4.5rem] shrink-0 rounded border px-1.5 py-0.5 text-center text-xs font-medium transition-colors",
-                on && "border-primary/50 bg-primary/8 text-foreground",
-                done && !on && "border-emerald-500/25 bg-emerald-500/5 text-emerald-800 dark:text-emerald-200",
-                !on && !done && "border-border/50 bg-muted/30 text-muted-foreground",
-              )}
-              title={st.label}
-            >
-              {st.short}
+            <div key={st.id} className="relative flex-1" title={st.label}>
+              <div className="h-1 overflow-hidden rounded-full bg-muted">
+                <motion.div
+                  className={cn(
+                    "h-full rounded-full",
+                    done ? "bg-primary" : active ? "bg-primary/60" : "bg-transparent",
+                  )}
+                  initial={false}
+                  animate={{
+                    width: done ? "100%" : active ? `${Math.max(8, srsProgress)}%` : "0%",
+                  }}
+                  transition={{ type: "spring", stiffness: 260, damping: 28 }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Stage dots */}
+      <div className="flex items-center gap-0.5">
+        {stages.map((st, i) => {
+          const done = i < activeStageIndex || st.completion >= 0.95;
+          const active = i === activeStageIndex;
+          return (
+            <div key={st.id} className="flex flex-1 flex-col items-center gap-1" title={st.label}>
+              <div className={cn(
+                "size-1.5 rounded-full transition-all duration-300",
+                done && "bg-primary",
+                active && "scale-125 bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)]",
+                !done && !active && "bg-muted-foreground/25",
+              )} />
+              <span className={cn(
+                "text-[9px] font-medium leading-none tracking-wide transition-colors",
+                active ? "text-foreground" : done ? "text-primary/70" : "text-muted-foreground/50",
+              )}>
+                {st.short}
+              </span>
             </div>
           );
         })}
@@ -186,9 +226,21 @@ function UserBubble({ content }: { content: string }) {
 
 function ProcessingIndicator() {
   return (
-    <div className="flex items-center gap-2 py-1">
-      <Loader2 className="text-muted-foreground size-4 animate-spin" />
-      <span className="text-muted-foreground text-sm">Agent is thinking...</span>
+    <div className="flex items-start gap-2">
+      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-border/60 bg-card/90 px-3.5 py-3 shadow-sm">
+        <span
+          className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
+          style={{ animationDelay: "0ms", animationDuration: "1.2s" }}
+        />
+        <span
+          className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
+          style={{ animationDelay: "200ms", animationDuration: "1.2s" }}
+        />
+        <span
+          className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
+          style={{ animationDelay: "400ms", animationDuration: "1.2s" }}
+        />
+      </div>
     </div>
   );
 }
@@ -232,7 +284,32 @@ function QuickStarters({
   );
 }
 
-export function SrsCenterPanel() {
+type SessionItem = ProjectAiChatSession & { srsProgress?: number; _count?: { messages: number }; title?: string | null };
+
+function sessionLabel(session: SessionItem, index: number): string {
+  if (session.title?.trim()) return session.title.trim();
+  const count = session._count?.messages ?? 0;
+  return count > 0 ? `Session ${index + 1} · ${count} msg${count === 1 ? "" : "s"}` : `Session ${index + 1}`;
+}
+
+const AGENT_LABEL: Record<AgentSessionType, string> = {
+  requirements: "Requirements",
+  developer_advisor: "Dev Advisor",
+};
+
+export function SrsCenterPanel({
+  interactionDisabledReason,
+  sessions = [],
+  activeSessionId,
+  onSelectSession,
+  onNewSession,
+}: {
+  interactionDisabledReason?: string;
+  sessions?: SessionItem[];
+  activeSessionId?: string | null;
+  onSelectSession?: (id: string) => void;
+  onNewSession?: () => void;
+} = {}) {
   const messages = useRequirementsWorkspaceStore((s) => s.messages);
   const projectId = useRequirementsWorkspaceStore((s) => s.projectId);
   const backendAiChatSessionId = useRequirementsWorkspaceStore((s) => s.backendAiChatSessionId);
@@ -282,17 +359,89 @@ export function SrsCenterPanel() {
     setBackendAiChatSessionId, setAgentError,
   ]);
 
-  const showHero = messages.length === 0 && !isProcessing;
+  const isSending = createSession.isPending || submitTurn.isPending;
+  const showHero = messages.length === 0 && !isProcessing && !isSending;
   const gradientColors: [string, string, string, string] =
     resolvedTheme === "dark"
       ? ["#C4B5DE", "#9B85C8", "#B09ED4", "#D6CAEB"]
       : ["#DBEAFE", "#93C5FD", "#BFDBFE", "#E0F2FE"];
 
-  const isSending = createSession.isPending || submitTurn.isPending;
-
   return (
     <TooltipProvider delayDuration={200}>
       <Card className="relative flex h-full min-h-0 w-full flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm">
+        {/* Top-right session controls */}
+        <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
+          {onNewSession && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onNewSession}
+                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <MessageCirclePlus className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">New conversation</TooltipContent>
+            </Tooltip>
+          )}
+          {sessions.length > 0 && onSelectSession && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <Clock className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Conversation history</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Conversations
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {sessions.map((session, i) => {
+                  const active = session.id === activeSessionId;
+                  const pct = session.srsProgress ?? 0;
+                  const agentType: AgentSessionType = session.agentType ?? "requirements";
+                  return (
+                    <DropdownMenuItem
+                      key={session.id}
+                      onSelect={() => onSelectSession(session.id)}
+                      className="flex items-center gap-2.5 py-2"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-xs">
+                        {sessionLabel(session, i)}
+                      </span>
+                      {pct > 0 && agentType === "requirements" && (
+                        <span className={cn(
+                          "shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums",
+                          pct === 100
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "bg-primary/10 text-primary",
+                        )}>
+                          {pct === 100 ? "Done" : `${pct}%`}
+                        </span>
+                      )}
+                      {agentType !== "requirements" && (
+                        <span className="shrink-0 rounded-full bg-violet-500/15 px-1.5 py-px text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+                          {AGENT_LABEL[agentType]}
+                        </span>
+                      )}
+                      {active && <Check className="size-3 shrink-0 text-primary" />}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
         <AnimatePresence>
           {showHero && (
             <motion.div
@@ -315,21 +464,8 @@ export function SrsCenterPanel() {
           )}
         </AnimatePresence>
 
-        {/* Header */}
-        <div className="border-border/60 relative z-10 shrink-0 space-y-2 border-b bg-background/80 px-3 py-2.5 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold leading-none">Interview</p>
-            {completedSpec && (
-              <Badge className="bg-emerald-600 text-xs font-normal text-white">
-                <Check className="mr-1 size-3" /> SRS Complete
-              </Badge>
-            )}
-          </div>
-          <StageBar />
-        </div>
-
-        {/* Messages */}
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+        {/* Messages — flex-1 min-h-0 so the card controls height, not the page */}
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none px-3 py-3">
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
             {agentError && (
               <motion.div
@@ -393,56 +529,54 @@ export function SrsCenterPanel() {
               ))}
             </AnimatePresence>
 
-            {isProcessing && <ProcessingIndicator />}
+            {(isSending || isProcessing) && <ProcessingIndicator />}
 
             <div ref={endRef} />
           </div>
         </div>
 
         {/* Composer */}
-        <div className="border-border/60 relative z-10 shrink-0 border-t bg-background/90 px-3 py-2.5 backdrop-blur-md">
+        <div className="relative z-10 shrink-0 px-4 pb-3 pt-2">
           <div className="mx-auto max-w-2xl">
-            {completedSpec ? (
-              <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-                <Check className="size-4 text-emerald-500" />
-                SRS is complete. Review the full document in the specification panel.
-              </p>
+            {interactionDisabledReason ? (
+              <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+                <AlertCircle className="size-4 shrink-0 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm">{interactionDisabledReason}</p>
+              </div>
+            ) : completedSpec ? (
+              <div className="flex items-center gap-1.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 shadow-sm">
+                <Check className="size-4 shrink-0 text-emerald-500" />
+                <p className="text-muted-foreground text-sm">SRS is complete. Review the full document in the specification panel.</p>
+              </div>
             ) : (
-              <>
-                <div className="relative flex items-end gap-1.5 rounded-xl border border-border/80 bg-muted/25 p-1.5 focus-within:border-border focus-within:shadow-sm">
-                  <MessageSquare className="text-muted-foreground mx-0.5 mb-1.5 size-4 shrink-0" />
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder={
-                      messages.length === 0
-                        ? "Describe your project..."
-                        : "Reply to the questions above..."
+              <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-background/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur-md transition-shadow focus-within:shadow-xl focus-within:shadow-black/8 dark:bg-card/90">
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder={
+                    messages.length === 0
+                      ? "Describe your project..."
+                      : "Reply to the questions above..."
+                  }
+                  rows={1}
+                  className="min-h-[36px] max-h-[120px] flex-1 resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 py-1.5"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void send(draft);
                     }
-                    rows={2}
-                    className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void send(draft);
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="mb-0.5 size-8 shrink-0 rounded-lg"
-                    disabled={!draft.trim() || isSending || isProcessing}
-                    onClick={() => void send(draft)}
-                  >
-                    {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                  </Button>
-                </div>
-                <p className="text-muted-foreground mt-1.5 flex items-center gap-1 text-xs">
-                  <Sparkles className="size-3" />
-                  Enter to send, Shift+Enter for new line
-                </p>
-              </>
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  className="mb-0.5 size-8 shrink-0 rounded-xl"
+                  disabled={!draft.trim() || isSending || isProcessing}
+                  onClick={() => void send(draft)}
+                >
+                  {isSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-3.5" />}
+                </Button>
+              </div>
             )}
           </div>
         </div>

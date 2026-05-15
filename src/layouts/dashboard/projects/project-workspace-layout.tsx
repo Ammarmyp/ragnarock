@@ -14,6 +14,7 @@ type ProjectWorkspaceLayoutProps = {
 export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspaceLayoutProps) {
   const pathname = usePathname();
   const isProjectOverview = pathname?.includes("/overview");
+  const isFullBleed = isProjectOverview || pathname?.includes("/ragnarock");
   void useProject(projectId);
   const setSelectedProjectId = useProjectWorkspaceStore((state) => state.setSelectedProjectId);
 
@@ -26,12 +27,11 @@ export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspace
     <DashboardLayout>
       <div
         className={
-          isProjectOverview
-            ? "flex h-full min-h-0 flex-1 flex-col overflow-auto"
-            : "flex h-full min-h-0 flex-1 flex-col gap-3 p-4 md:p-5"
+          isFullBleed
+            ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+            : "flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4 md:p-5"
         }
       >
-        {/* Project name/role now live in the top header next to the avatar. */}
         <div
           className={
             isProjectOverview

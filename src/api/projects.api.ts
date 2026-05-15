@@ -60,11 +60,29 @@ export interface UpdateProjectDto {
   status?: Project["status"];
 }
 
+export type ProjectPersona =
+  | "business_owner"
+  | "developer"
+  | "qa_engineer"
+  | "project_manager"
+  | "stakeholder";
+
+export const PROJECT_PERSONA_LABELS: Record<ProjectPersona, string> = {
+  business_owner: "Business Owner",
+  developer: "Developer",
+  qa_engineer: "QA Engineer",
+  project_manager: "Project Manager",
+  stakeholder: "Stakeholder",
+};
+
+export type AgentSessionType = "requirements" | "developer_advisor";
+
 export interface ProjectMember {
   id: string;
   projectId: string;
   userId: string;
   role: "owner" | "admin" | "member" | "viewer";
+  persona?: ProjectPersona | null;
   joinedAt: string;
   user?: {
     id: string;
@@ -78,6 +96,11 @@ export interface AddProjectMemberDto {
   userId?: string;
   email?: string;
   role: ProjectMember["role"];
+  persona?: ProjectPersona;
+}
+
+export interface UpdateProjectMemberPersonaDto {
+  persona: ProjectPersona | null;
 }
 
 export type ProjectRoleSummary = { role: ProjectMember["role"] };
@@ -462,6 +485,18 @@ export async function updateProjectMemberRole(
   return parseResponseData<ProjectMember>(response);
 }
 
+export async function updateProjectMemberPersona(
+  projectId: string,
+  userId: string,
+  persona: ProjectPersona | null,
+): Promise<ProjectMember> {
+  const response = await apiClient.patch<unknown>(
+    `${PROJECT_ENDPOINTS.MEMBER(projectId, userId)}/persona`,
+    { persona },
+  );
+  return parseResponseData<ProjectMember>(response);
+}
+
 export async function getProjectRole(projectId: string): Promise<ProjectRoleSummary> {
   const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.MY_ROLE(projectId));
   return parseResponseData<ProjectRoleSummary>(response);
@@ -664,6 +699,7 @@ export interface ProjectAiChatSession {
   projectId: string;
   createdBy: string;
   title: string | null;
+  agentType: AgentSessionType;
   createdAt: string;
   updatedAt: string;
   author?: { id: string; name?: string | null; email?: string | null };
@@ -703,6 +739,7 @@ export interface AiTurnQueuedResponse {
 
 export interface CreateProjectAiChatSessionDto {
   title?: string;
+  agentType?: AgentSessionType;
 }
 
 export async function createProjectAiChatSession(

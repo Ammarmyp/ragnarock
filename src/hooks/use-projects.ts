@@ -36,6 +36,7 @@ import {
   updateProject,
   updateProjectDocumentation,
   updateProjectMemberRole,
+  updateProjectMemberPersona,
   updateProjectRequirement,
   updateProjectSkill,
   updateProjectTask,
@@ -53,6 +54,7 @@ import {
   type ProjectOverviewResponse,
   type ProjectDocumentation,
   type ProjectMember,
+  type ProjectPersona,
   type ProjectRequirement,
   type ProjectRoleSummary,
   type ProjectSkill,
@@ -237,6 +239,21 @@ export function useUpdateProjectMemberRole(options?: UseMutationOptions<ProjectM
     },
   });
 }
+export function useUpdateProjectMemberPersona(
+  options?: UseMutationOptions<ProjectMember, Error, { projectId: string; userId: string; persona: ProjectPersona | null }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, userId, persona }) => updateProjectMemberPersona(projectId, userId, persona),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
 export function useRemoveProjectMember(options?: UseMutationOptions<void, Error, { projectId: string; userId: string }>) {
   const queryClient = useQueryClient();
   const { onSuccess, ...rest } = options ?? {};

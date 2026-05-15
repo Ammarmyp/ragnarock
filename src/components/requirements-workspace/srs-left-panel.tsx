@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SrsDocumentBody, buildSrsMarkdown } from "@/components/requirements-workspace/srs-document-body";
+import { StageBar } from "@/components/requirements-workspace/srs-center-panel";
 import type { SrsRequirement } from "@/features/requirements-workspace/types";
 import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
 
@@ -347,7 +348,7 @@ export function SrsLeftPanel({ onCollapse }: { onCollapse?: () => void }) {
         <div className="flex items-center justify-between gap-2">
           <div className="space-y-0.5">
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Live SRS</p>
-            <h2 className="text-sm font-semibold leading-tight">Specification</h2>
+            <h2 className="text-sm font-semibold leading-tight">Interview</h2>
           </div>
           {onCollapse && (
             <Button
@@ -363,7 +364,12 @@ export function SrsLeftPanel({ onCollapse }: { onCollapse?: () => void }) {
           )}
         </div>
 
-        <div className="mt-2.5 flex gap-0.5">
+        {/* Stage progress — lives here so chat panel is uncluttered */}
+        <div className="mt-2.5 pb-2.5 border-b border-border/40">
+          <StageBar />
+        </div>
+
+        <div className="mt-1 flex gap-0.5">
           {(["sections", "document"] as PanelTab[]).map((tab) => (
             <button
               key={tab}

@@ -25,14 +25,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAddProjectMember, useProjectMembers, useRemoveProjectMember } from "@/hooks/use-projects";
+import {
+  useAddProjectMember,
+  useProjectMembers,
+  useRemoveProjectMember,
+  useUpdateProjectMemberPersona,
+} from "@/hooks/use-projects";
 import { toast } from "@/lib/toast";
+import type { ProjectPersona } from "@/api/projects.api";
+import { PROJECT_PERSONA_LABELS } from "@/api/projects.api";
 
 const ROLE_OPTIONS = ["owner", "admin", "member", "viewer"] as const;
+const PERSONA_OPTIONS: ProjectPersona[] = [
+  "business_owner",
+  "developer",
+  "qa_engineer",
+  "project_manager",
+  "stakeholder",
+];
 
 const memberSchema = z.object({
   email: z.string().email("Valid email is required"),
   role: z.enum(ROLE_OPTIONS),
+  persona: z.string(),
 });
 
 export function ProjectMembersLayout({ projectId }: { projectId: string }) {
@@ -54,12 +69,20 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
       setMemberToRemove(null);
     },
   });
+  const updatePersona = useUpdateProjectMemberPersona();
 
   const form = useForm({
-    defaultValues: { email: "", role: "member" },
+    defaultValues: { email: "", role: "member", persona: "" },
     validators: { onSubmit: memberSchema },
     onSubmit: async ({ value }) => {
-      await addMember.mutateAsync({ id: projectId, data: value as never });
+      await addMember.mutateAsync({
+        id: projectId,
+        data: {
+          email: value.email,
+          role: value.role as (typeof ROLE_OPTIONS)[number],
+          ...(value.persona ? { persona: value.persona as ProjectPersona } : {}),
+        },
+      });
       form.reset();
     },
   });
@@ -135,6 +158,34 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
                   );
                 }}
               </form.Field>
+              <form.Field name="persona">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor={field.name}>Persona (optional)</FieldLabel>
+                    <Select
+                      value={field.state.value || "_none"}
+                      onValueChange={(value) =>
+                        field.handleChange(value === "_none" ? "" : value)
+                      }
+                    >
+                      <SelectTrigger id={field.name}>
+                        <SelectValue placeholder="No persona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">No persona</SelectItem>
+                        {PERSONA_OPTIONS.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {PROJECT_PERSONA_LABELS[p]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      SDLC persona controls which AI agents and capabilities are available.
+                    </FieldDescription>
+                  </Field>
+                )}
+              </form.Field>
               <DialogFooter>
                 <Button type="submit">Add</Button>
               </DialogFooter>
@@ -143,32 +194,56 @@ export function ProjectMembersLayout({ projectId }: { projectId: string }) {
         </Dialog>
       </CardHeader>
       <CardContent className="space-y-2">
-        {data?.map((member) => (
-          <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="font-medium">{member.user?.name || member.user?.email || member.userId}</p>
-              <p className="text-xs text-muted-foreground">{member.user?.email || member.userId}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
-              {member.role !== "owner" && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setMemberToRemove({
-                      userId: member.userId,
-                      label: member.user?.name || member.user?.email || member.userId,
-                    })
-                  }
+        {data?.map((member) => {
+          const persona = (member as typeof member & { persona?: ProjectPersona | null }).persona ?? null;
+          return (
+            <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <p className="font-medium">{member.user?.name || member.user?.email || member.userId}</p>
+                <p className="text-xs text-muted-foreground">{member.user?.email || member.userId}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Persona selector */}
+                <Select
+                  value={persona ?? "_none"}
+                  onValueChange={(value) => {
+                    const next = value === "_none" ? null : (value as ProjectPersona);
+                    void updatePersona.mutateAsync({ projectId, userId: member.userId, persona: next });
+                  }}
                 >
-                  Remove
-                </Button>
-              )}
+                  <SelectTrigger className="h-7 w-36 text-xs">
+                    <SelectValue placeholder="No persona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none" className="text-xs">No persona</SelectItem>
+                    {PERSONA_OPTIONS.map((p) => (
+                      <SelectItem key={p} value={p} className="text-xs">
+                        {PROJECT_PERSONA_LABELS[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
+                {member.role !== "owner" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setMemberToRemove({
+                        userId: member.userId,
+                        label: member.user?.name || member.user?.email || member.userId,
+                      })
+                    }
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
       <AlertDialog open={memberToRemove !== null} onOpenChange={(openState) => !openState && setMemberToRemove(null)}>
         <AlertDialogContent>

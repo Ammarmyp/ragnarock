@@ -55,7 +55,7 @@ export const sidebarConfig: SidebarConfig = {
         },
         {
           title: "Requirements",
-          href: "/requirements",
+          href: "/ragnarock",
           icon: FileText,
           roles: ["admin", "manager", "user"],
         },

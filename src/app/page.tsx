@@ -8,199 +8,343 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
   ArrowRight,
-  CheckCircle2,
+  Check,
+  CircleDashed,
+  CircleDot,
+  Cpu,
+  Database,
+  FileJson,
+  Files,
+  Globe,
+  MessageCircleQuestion,
+  MessagesSquare,
   Shield,
   Sparkles,
+  Rocket,
+  ScanSearch,
   TimerReset,
+  Upload,
   Users,
+  Waypoints,
   Workflow,
 } from "lucide-react";
 
 export default function HomePage() {
-  const capabilities = [
+  const painPoints = [
     {
-      icon: Workflow,
-      title: "Connected SDLC workspace",
-      description:
-        "Unify documentation, requirements, tasks, and decision history in one operational system.",
+      title: "Intent is informal",
+      description: "Business ideas start as conversations, notes, and documents without structure.",
     },
     {
-      icon: TimerReset,
-      title: "Faster delivery cycles",
-      description:
-        "Reduce handoff friction with traceable updates and clear ownership across product and engineering.",
+      title: "Teams fill in gaps",
+      description: "Engineering interprets missing details and assumptions become implementation decisions.",
     },
     {
-      icon: Shield,
-      title: "Enterprise-ready governance",
-      description:
-        "Role-based controls and auditable activity streams keep teams aligned and compliant.",
+      title: "Mismatch appears late",
+      description: "Product review exposes that shipped behavior does not match stakeholder intent.",
+    },
+    {
+      title: "Rework drains delivery",
+      description: "Cycles reset, deadlines slip, and trust erodes between business and engineering.",
     },
   ];
 
-  const outcomes = [
-    "From idea to implementation with full requirement traceability",
-    "A shared source of truth for product, engineering, and stakeholders",
-    "Cleaner delivery operations with less process noise",
+  const engineFlow = [
+    {
+      title: "Capture",
+      copy: "Text, URL, or file upload enters a single requirement pipeline.",
+      icon: Upload,
+    },
+    {
+      title: "Extract",
+      copy: "Content is parsed, cleaned, and normalized into analysis-ready context.",
+      icon: ScanSearch,
+    },
+    {
+      title: "Analyze",
+      copy: "The AI identifies ambiguity, missing details, and requirement conflicts.",
+      icon: Cpu,
+    },
+    {
+      title: "Clarify",
+      copy: "Targeted follow-up questions continue until requirements are complete.",
+      icon: MessageCircleQuestion,
+    },
+    {
+      title: "Generate",
+      copy: "Validated SRS JSON and business-owner summary are produced for handoff.",
+      icon: FileJson,
+    },
+  ];
+
+  const architectureFlow = [
+    {
+      title: "Business Owner",
+      copy: "Submits text, URL, or document",
+      icon: Users,
+    },
+    {
+      title: "NestJS Backend",
+      copy: "Auth, persistence, queue publish",
+      icon: Workflow,
+    },
+    {
+      title: "Redis Streams",
+      copy: "Async jobs and results transport",
+      icon: Waypoints,
+    },
+    {
+      title: "FastAPI AI Layer",
+      copy: "Requirement analysis and SRS generation",
+      icon: Sparkles,
+    },
+    {
+      title: "WebSocket Update",
+      copy: "Real-time turn completion to client",
+      icon: MessagesSquare,
+    },
+  ];
+
+  const acceptedInputs = [
+    { label: "Direct text input", icon: MessagesSquare },
+    { label: "PDF, DOCX, TXT files", icon: Files },
+    { label: "Public website URL", icon: Globe },
+  ];
+
+  const deliverables = [
+    "Targeted clarification questions when requirements are incomplete",
+    "Strict schema-compliant SRS JSON when requirements are complete",
+    "Plain-language summary for final business-owner confirmation",
+  ];
+
+  const guardrails = [
+    "No architecture recommendation in MVP",
+    "No sprint planning or task breakdown",
+    "No code generation",
+    "No multi-agent orchestration",
   ];
 
   return (
     <HomeLayout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative isolate overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-60"
+          className="pointer-events-none absolute -top-28 left-1/2 h-[38rem] w-6xl -translate-x-1/2 opacity-70 blur-3xl"
           style={{
             background:
-              "radial-gradient(1200px 420px at 50% -10%, color-mix(in oklch, var(--primary) 20%, transparent), transparent 70%)",
+              "radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--primary) 26%, transparent) 0%, transparent 68%)",
           }}
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
           style={{
-            backgroundImage:
+            background:
               "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
+            backgroundSize: "38px 38px",
           }}
         />
 
-        <div className="container relative py-20 md:py-28 lg:py-32">
-          <div className="mx-auto max-w-5xl">
-            <div className="inline-flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8 lg:py-28">
+          <div className="max-w-5xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background/65 px-3 py-1 text-xs text-muted-foreground backdrop-blur-xl">
               <Sparkles className="size-3.5 text-primary" />
-              Serious tooling for modern software delivery
+              AI-Powered Requirement Validation Platform
             </div>
 
-            <h1 className="mt-6 text-balance text-4xl leading-tight font-semibold tracking-tight md:text-6xl lg:text-7xl">
-              SDLC orchestration for teams shipping real products
+            <h1 className="mt-6 max-w-5xl text-balance text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl lg:text-7xl">
+              Replace requirement ambiguity
+              <span className="block text-primary">with developer-ready certainty.</span>
             </h1>
 
             <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
-              Ragnarock helps engineering organizations manage the full software development life cycle with
-              clarity, speed, and discipline. Plan better, align teams, and deliver with confidence.
+              Ragnarock guides business owners through structured clarification and document analysis, then delivers
+              complete SRS output only when requirements are implementation-ready.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button size="lg" asChild>
                 <Link href="/dashboard/projects">
-                  Enter workspace
+                  Start Validation
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/help">View product tour</Link>
+                <Link href="/sign-up">Create Account</Link>
               </Button>
             </div>
 
-            <div className="mt-8 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-              {outcomes.map((item) => (
-                <div key={item} className="rounded-md border bg-card/70 px-3 py-2">
+            <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                "Clarification-first requirement flow",
+                "Strict schema-driven outputs",
+                "Async processing via Redis Streams",
+                "Real-time delivery to business owners",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-xl border border-border/70 bg-card/45 px-4 py-3 text-sm text-muted-foreground backdrop-blur-xl"
+                >
                   {item}
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* Value / Capability Section */}
-      <section className="container py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 flex flex-col gap-3 text-center">
-            <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Why teams choose Ragnarock</p>
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Built for serious delivery environments
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground md:text-lg">
-              A clean interface with operational depth: everything needed to run software programs with high signal and
-              low overhead.
-            </p>
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
+        <div className="mb-8 flex flex-col gap-3">
+          <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">The core problem</p>
+          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Most teams fail before coding starts</h2>
+          <p className="max-w-3xl text-muted-foreground md:text-lg">
+            Projects break when intent is incomplete. Without a requirement validation gate, engineering is forced to
+            guess, and rework becomes inevitable.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          {painPoints.map((item, idx) => (
+            <article key={item.title} className="rounded-2xl border border-border/70 bg-card/45 p-6 backdrop-blur-xl">
+              <div className="mb-3 inline-flex rounded-md border border-primary/25 px-2 py-1 font-mono text-xs text-primary">
+                {String(idx + 1).padStart(2, "0")}
+              </div>
+              <h3 className="text-base font-semibold">{item.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
+        <div className="rounded-3xl border border-border/70 bg-card/40 p-6 backdrop-blur-xl md:p-8">
+          <div className="mb-8">
+            <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">The solution</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Requirement Engine workflow</h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
-            {capabilities.map(({ icon: Icon, title, description }) => (
-              <article
-                key={title}
-                className="group relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm transition-colors hover:bg-card/90"
-              >
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -top-16 -right-10 size-40 rounded-full opacity-50 blur-2xl transition-opacity group-hover:opacity-70"
-                  style={{ background: "color-mix(in oklch, var(--primary) 22%, transparent)" }}
-                />
-                <div className="relative">
-                  <div className="mb-4 inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </div>
-                  <h3 className="text-lg font-semibold">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+          <div className="grid gap-4 md:grid-cols-5">
+            {engineFlow.map(({ title, copy, icon: Icon }, idx) => (
+              <div key={title} className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-mono text-xs text-primary">{String(idx + 1).padStart(2, "0")}</span>
+                  <Icon className="size-4 text-primary" />
                 </div>
-              </article>
+                <h3 className="text-sm font-semibold leading-snug">{title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{copy}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-sm text-muted-foreground">
+            Clarification loop exits only when developers can implement without assumptions.
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-20 lg:px-8">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <article className="rounded-3xl border border-border/70 bg-card/45 p-6 backdrop-blur-xl">
+            <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Accepted inputs</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight">Meet business owners where they are</h3>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {acceptedInputs.map(({ label, icon: Icon }) => (
+                <div key={label} className="rounded-xl border border-border/70 bg-background/55 p-4">
+                  <Icon className="mb-2 size-4 text-primary" />
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-3xl border border-border/70 bg-card/45 p-6 backdrop-blur-xl">
+            <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">What teams receive</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight">Concrete handoff artifacts</h3>
+            <ul className="mt-5 space-y-3">
+              {deliverables.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 rounded-xl border border-border/70 bg-background/55 p-3 text-sm"
+                >
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span className="text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 md:pb-20 lg:px-8">
+        <div className="rounded-3xl border border-border/70 bg-card/45 p-6 backdrop-blur-xl md:p-8">
+          <div className="mb-7 flex items-center gap-2">
+            <Database className="size-4 text-primary" />
+            <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Runtime architecture</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-5">
+            {architectureFlow.map(({ title, copy, icon: Icon }) => (
+              <div key={title} className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                <Icon className="mb-2 size-4 text-primary" />
+                <h3 className="text-sm font-semibold">{title}</h3>
+                <p className="mt-1.5 text-xs text-muted-foreground">{copy}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            {guardrails.map((item) => (
+              <div key={item} className="rounded-xl border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
+                {item}
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Process Snapshot */}
-      <section className="container py-12 md:py-18">
-        <div className="mx-auto grid max-w-6xl gap-6 rounded-2xl border bg-card/60 p-6 shadow-sm md:grid-cols-4 md:p-8">
-          {[
-            { step: "01", title: "Capture", copy: "Document business intent, scope, and requirements." },
-            { step: "02", title: "Align", copy: "Bring product, engineering, and stakeholders into one workflow." },
-            { step: "03", title: "Execute", copy: "Track progress from specification to delivery milestones." },
-            { step: "04", title: "Improve", copy: "Use activity insight to refine process quality over time." },
-          ].map((item) => (
-            <div key={item.step} className="space-y-2">
-              <p className="font-mono text-xs tracking-widest text-primary">{item.step}</p>
-              <h3 className="text-base font-semibold">{item.title}</h3>
-              <p className="text-sm text-muted-foreground">{item.copy}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="container py-16 md:py-20">
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-6 overflow-hidden rounded-2xl border bg-muted/40 px-6 py-12 text-center md:px-10">
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
+        <div className="relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl border border-border/70 bg-card/45 px-6 py-12 text-center backdrop-blur-xl md:px-10">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-80"
+            className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-80"
             style={{
               background:
-                "linear-gradient(to bottom, color-mix(in oklch, var(--primary) 18%, transparent), transparent)",
+                "linear-gradient(to bottom, color-mix(in oklch, var(--primary) 26%, transparent), transparent)",
             }}
           />
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background/65 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+            <CircleDot className="size-3.5 text-primary" />
+            Deterministic Requirement Engine
+          </div>
           <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
-            Build with confidence. Ship with clarity.
+            Ship what was actually asked for.
           </h2>
           <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
-            Give your team a higher-quality operating system for software development life cycle execution.
+            Turn vague intent into complete, validated requirements before implementation begins.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Button size="lg" asChild>
               <Link href="/dashboard/projects">
-                Open Ragnarock
+                Open Platform
                 <ArrowRight className="ml-2 size-4" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/sign-in">Sign in</Link>
+              <Link href="/sign-in">Sign In</Link>
             </Button>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-primary" />
-              Team-first workflows
+              <Shield className="size-4 text-primary" />
+              Less ambiguity
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-primary" />
-              Traceable execution
+              <TimerReset className="size-4 text-primary" />
+              Less rework
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-primary" />
-              Enterprise-ready control
+              <Rocket className="size-4 text-primary" />
+              Faster delivery
             </span>
           </div>
         </div>

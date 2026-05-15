@@ -98,7 +98,7 @@ function SrsCard({
     [data.partialSrs, data.spec],
   );
   const isComplete = data.status === "complete";
-  const detailHref = `/dashboard/projects/${projectId}/requirements`;
+  const detailHref = `/dashboard/projects/${projectId}/ragnarock`;
 
   return (
     <>
@@ -111,7 +111,7 @@ function SrsCard({
         )}
       >
         <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="gap-1 border-transparent font-normal text-xs">
                 <Bot className="size-3" />
@@ -133,10 +133,17 @@ function SrsCard({
                   In progress
                 </Badge>
               )}
+              <span className="text-xs text-muted-foreground">
+                Updated {new Date(data.updatedAt).toLocaleDateString()}
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              Updated {new Date(data.updatedAt).toLocaleDateString()}
-            </span>
+            {markdown && (
+              <DocumentationDownloadMenu
+                compact
+                title={data.spec ? `${data.spec.payload.project_name} — SRS` : "SRS Document"}
+                markdown={markdown}
+              />
+            )}
           </div>
 
           <h3 className="text-lg font-semibold tracking-tight leading-snug">{data.title}</h3>
@@ -206,13 +213,6 @@ function SrsCard({
               <Expand className="mr-1 size-4" />
               Preview SRS
             </Button>
-          )}
-          {isComplete && markdown && data.spec && (
-            <DocumentationDownloadMenu
-              compact
-              title={`${data.spec.payload.project_name} — SRS`}
-              markdown={markdown}
-            />
           )}
         </CardFooter>
       </Card>

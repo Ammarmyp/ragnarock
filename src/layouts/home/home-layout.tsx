@@ -9,6 +9,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface HomeLayoutProps {
   children: React.ReactNode;
@@ -22,11 +23,11 @@ export function HomeLayout({ children }: HomeLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header/Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/70 backdrop-blur-xl supports-backdrop-filter:bg-background/50">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-primary backdrop-blur">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
@@ -44,10 +45,11 @@ export function HomeLayout({ children }: HomeLayoutProps) {
             </Link>
           </div>
 
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <ModeToggle />
             <Link
               href="/dashboard/projects"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-primary sm:inline-flex"
             >
               Projects
             </Link>
@@ -68,10 +70,10 @@ export function HomeLayout({ children }: HomeLayoutProps) {
       <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="border-t py-6 md:py-0">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
+      <footer className="border-t border-border/70 bg-background/70 py-6 backdrop-blur-xl md:py-0">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:h-16 md:flex-row lg:px-8">
           <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built with Next.js, Tailwind CSS, and shadcn/ui.
+            AI-powered requirement validation for modern product teams.
           </p>
           <div className="flex items-center gap-4">
             <Link
