@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { taskSelectContentClassName, taskSelectTriggerClassName } from "@/components/tasks/task-ui";
+import { LinearSyncActions } from "@/components/linear/linear-sync-actions";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { useProjectMembers, useProjectRole } from "@/hooks/use-projects";
 import type { TaskPhase, TaskStatus } from "@/api/projects.api";
@@ -73,6 +74,7 @@ export function TasksToolbar({ projectId }: TasksToolbarProps) {
                 Board
               </Button>
             </div>
+            <LinearSyncActions projectId={projectId} variant="inline" />
             {canEdit && (
               <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="mr-1 size-4" />
