@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MarkdownContent } from "@/components/documentation/markdown-content";
+import { SrsDocumentBody, buildSrsMarkdown } from "@/components/requirements-workspace/srs-document-body";
 import { cn } from "@/lib/utils";
 import { useProjectDocumentations } from "@/hooks/use-projects";
 import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
@@ -49,7 +50,7 @@ const SUGGESTIONS = [
   { icon: Lightbulb,  label: "Identify risks",        prompt: "What are the main technical risks and how do we mitigate them?" },
 ];
 
-type PanelTab = "prompts" | "docs";
+type PanelTab = "prompts" | "srs" | "docs";
 
 // ─── Doc card ──────────────────────────────────────────────────────────────
 
@@ -156,6 +157,70 @@ function DocsTab({ projectId }: { projectId: string }) {
   );
 }
 
+// ─── SRS tab ───────────────────────────────────────────────────────────────
+
+function SrsTab() {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const partialSrs = useRequirementsWorkspaceStore((s) => s.partialSrs);
+  const completedSpec = useRequirementsWorkspaceStore((s) => s.completedSpec);
+  const baseSpec = useRequirementsWorkspaceStore((s) => s.baseSpec);
+  const srsProgress = useRequirementsWorkspaceStore((s) => s.srsProgress);
+  const isProcessing = useRequirementsWorkspaceStore((s) => s.isProcessing);
+
+  const displaySpec = completedSpec ?? baseSpec;
+  const displayProgress = displaySpec ? 100 : srsProgress;
+  const markdown = useMemo(
+    () => buildSrsMarkdown(partialSrs, displaySpec),
+    [partialSrs, displaySpec],
+  );
+  const status = displaySpec ? "complete" : partialSrs ? "in_progress" : "not_started";
+  const title = displaySpec?.project_name ?? partialSrs?.project_name ?? "SRS Document";
+
+  return (
+    <>
+      <div className="flex h-full flex-col gap-2 px-3 py-3">
+        <div className="flex shrink-0 justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setModalOpen(true)}
+            title="Expand SRS"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Expand className="size-3.5" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <SrsDocumentBody
+            markdown={markdown}
+            status={status}
+            displayProgress={displayProgress}
+            isProcessing={isProcessing}
+          />
+        </div>
+      </div>
+
+      <Dialog open={modalOpen} onOpenChange={(v) => !v && setModalOpen(false)}>
+        <DialogContent className="flex h-[90dvh] max-h-[90dvh] w-[min(90vw,900px)] max-w-[min(90vw,900px)] flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 border-b px-6 py-4">
+            <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <SrsDocumentBody
+              markdown={markdown}
+              status={status}
+              displayProgress={displayProgress}
+              isProcessing={isProcessing}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── Main panel ────────────────────────────────────────────────────────────
 
 export function DeveloperAdvisorPanel({
@@ -195,20 +260,22 @@ export function DeveloperAdvisorPanel({
 
         {/* Tabs */}
         <div className="mt-2 flex gap-0.5">
-          {(["prompts", "docs"] as PanelTab[]).map((tab) => (
+          {(["prompts", "srs", "docs"] as PanelTab[]).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "flex items-center gap-1.5 rounded-t-md border-b-2 px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                "flex items-center gap-1.5 rounded-t-md border-b-2 px-2.5 py-1.5 text-xs font-medium transition-colors",
                 activeTab === tab
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              {tab === "prompts" ? <List className="size-3.5" /> : <FileText className="size-3.5" />}
-              {tab === "prompts" ? "Quick prompts" : "Documents"}
+              {tab === "prompts" && <List className="size-3.5" />}
+              {tab === "srs" && <FileText className="size-3.5" />}
+              {tab === "docs" && <BookOpen className="size-3.5" />}
+              {tab === "prompts" ? "Prompts" : tab === "srs" ? "SRS" : "Documents"}
             </button>
           ))}
         </div>
@@ -216,7 +283,7 @@ export function DeveloperAdvisorPanel({
 
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === "prompts" ? (
+        {activeTab === "prompts" && (
           <div className="flex h-full flex-col gap-3 overflow-y-auto p-3 scrollbar-none">
             <p className="text-xs text-muted-foreground leading-relaxed">
               Ask me anything about implementation — architecture, tech choices, repo structure, or dev planning.
@@ -240,7 +307,9 @@ export function DeveloperAdvisorPanel({
               ))}
             </div>
           </div>
-        ) : (
+        )}
+        {activeTab === "srs" && <SrsTab />}
+        {activeTab === "docs" && (
           projectId ? (
             <DocsTab projectId={projectId} />
           ) : (

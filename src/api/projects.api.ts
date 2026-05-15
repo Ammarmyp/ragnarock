@@ -89,7 +89,7 @@ export interface ProjectMember {
   projectId: string;
   userId: string;
   role: "owner" | "admin" | "member" | "viewer";
-  persona?: ProjectPersona | null;
+  personas: ProjectPersona[];
   joinedAt: string;
   user?: {
     id: string;
@@ -103,11 +103,11 @@ export interface AddProjectMemberDto {
   userId?: string;
   email?: string;
   role: ProjectMember["role"];
-  persona?: ProjectPersona;
+  personas?: ProjectPersona[];
 }
 
-export interface UpdateProjectMemberPersonaDto {
-  persona: ProjectPersona | null;
+export interface UpdateProjectMemberPersonasDto {
+  personas: ProjectPersona[];
 }
 
 export type ProjectRoleSummary = { role: ProjectMember["role"] };
@@ -492,14 +492,14 @@ export async function updateProjectMemberRole(
   return parseResponseData<ProjectMember>(response);
 }
 
-export async function updateProjectMemberPersona(
+export async function updateProjectMemberPersonas(
   projectId: string,
   userId: string,
-  persona: ProjectPersona | null,
+  personas: ProjectPersona[],
 ): Promise<ProjectMember> {
   const response = await apiClient.patch<unknown>(
     `${PROJECT_ENDPOINTS.MEMBER(projectId, userId)}/persona`,
-    { persona },
+    { personas },
   );
   return parseResponseData<ProjectMember>(response);
 }

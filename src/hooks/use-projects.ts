@@ -37,7 +37,7 @@ import {
   updateProject,
   updateProjectDocumentation,
   updateProjectMemberRole,
-  updateProjectMemberPersona,
+  updateProjectMemberPersonas,
   updateProjectRequirement,
   updateProjectSkill,
   updateProjectTask,
@@ -243,14 +243,14 @@ export function useUpdateProjectMemberRole(options?: UseMutationOptions<ProjectM
     },
   });
 }
-export function useUpdateProjectMemberPersona(
-  options?: UseMutationOptions<ProjectMember, Error, { projectId: string; userId: string; persona: ProjectPersona | null }>,
+export function useUpdateProjectMemberPersonas(
+  options?: UseMutationOptions<ProjectMember, Error, { projectId: string; userId: string; personas: ProjectPersona[] }>,
 ) {
   const queryClient = useQueryClient();
   const { onSuccess, ...rest } = options ?? {};
   return useMutation({
     ...rest,
-    mutationFn: ({ projectId, userId, persona }) => updateProjectMemberPersona(projectId, userId, persona),
+    mutationFn: ({ projectId, userId, personas }) => updateProjectMemberPersonas(projectId, userId, personas),
     onSuccess: (data, variables, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
       onSuccess?.(data, variables, onMutateResult, context);

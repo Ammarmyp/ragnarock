@@ -147,12 +147,16 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
   const currentUserId = authSession?.user?.id;
   const { data: members } = useProjectMembers(projectId, { enabled: !!projectId && !!currentUserId });
   const currentMember = members?.find((m) => m.userId === currentUserId);
-  const currentPersona = (currentMember as typeof currentMember & { persona?: string })?.persona ?? null;
+  const currentPersonas: AgentSessionType[] = (currentMember?.personas ?? []) as unknown as AgentSessionType[];
+
+  const isStakeholderOnly =
+    currentPersonas.length > 0 &&
+    currentPersonas.every((p) => (p as string) === "stakeholder");
 
   let interactionDisabledReason: string | undefined;
-  if (currentPersona === "stakeholder") {
+  if (isStakeholderOnly) {
     interactionDisabledReason = "Stakeholders have read-only access. Contact the project admin to change your persona.";
-  } else if (activeAgentType === "developer_intelligence" && currentPersona !== "developer") {
+  } else if (activeAgentType === "developer_intelligence" && !(currentMember?.personas ?? []).includes("developer")) {
     interactionDisabledReason = "The Developer Advisor is only available to members with the Developer persona.";
   }
 
@@ -166,6 +170,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
         <div className="min-h-0 min-w-0 flex-1 flex flex-col">
           <SrsCenterPanel
             interactionDisabledReason={interactionDisabledReason}
+            memberPersonas={(currentMember?.personas ?? []) as import("@/api/projects.api").ProjectPersona[]}
             sessions={sessions}
             activeSessionId={backendAiChatSessionId}
             onSelectSession={handleSelectSession}

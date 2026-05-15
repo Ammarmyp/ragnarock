@@ -42,7 +42,7 @@ import {
   useSubmitAiRequirementsTurn,
 } from "@/hooks/use-project-ai-chat";
 import { useProject } from "@/hooks/use-projects";
-import type { AgentSessionType, ProjectAiChatSession } from "@/api/projects.api";
+import type { AgentSessionType, ProjectAiChatSession, ProjectPersona } from "@/api/projects.api";
 
 const MeshGradient = dynamic(
   () => import("@paper-design/shaders-react").then((mod) => ({ default: mod.MeshGradient })),
@@ -393,14 +393,31 @@ const ACTIVE_AGENT_TYPES: { type: AgentSessionType; label: string }[] = [
   { type: "developer_intelligence", label: "Developer Intelligence" },
 ];
 
+/** Maps a single non-stakeholder persona to the most relevant agent type. */
+const PERSONA_TO_AGENT: Partial<Record<ProjectPersona, AgentSessionType>> = {
+  business_owner: "requirements",
+  project_manager: "requirements",
+  developer: "developer_intelligence",
+  qa_engineer: "requirements",
+};
+
+/** Given a member's personas, return the auto-detected agent if unambiguous. */
+function detectAgentFromPersonas(personas: ProjectPersona[]): AgentSessionType | null {
+  const active = personas.filter((p) => p !== "stakeholder");
+  if (active.length !== 1) return null;
+  return PERSONA_TO_AGENT[active[0]!] ?? "requirements";
+}
+
 export function SrsCenterPanel({
   interactionDisabledReason,
+  memberPersonas = [],
   sessions = [],
   activeSessionId,
   onSelectSession,
   onNewSession,
 }: {
   interactionDisabledReason?: string;
+  memberPersonas?: ProjectPersona[];
   sessions?: SessionItem[];
   activeSessionId?: string | null;
   onSelectSession?: (id: string) => void;
@@ -481,6 +498,9 @@ export function SrsCenterPanel({
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const activeAgentType: AgentSessionType = (activeSession?.agentType as AgentSessionType | undefined) ?? "requirements";
   const heroText = getHeroText(activeAgentType, project?.name);
+
+  // If the member has exactly one non-stakeholder persona, auto-detect the agent
+  const autoAgent = detectAgentFromPersonas(memberPersonas);
   const gradientColors: [string, string, string, string] =
     resolvedTheme === "dark"
       ? ["#C4B5DE", "#9B85C8", "#B09ED4", "#D6CAEB"]
@@ -491,36 +511,50 @@ export function SrsCenterPanel({
       <Card className="relative flex h-full min-h-0 w-full flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm">
         {/* Top-right session controls */}
         <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
-          <DropdownMenu>
+          {autoAgent ? (
+            /* Single persona — skip the dropdown, start directly */
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <MessageCirclePlus className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
+                <button
+                  type="button"
+                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => { void startNewSession(autoAgent); onNewSession?.(); }}
+                >
+                  <MessageCirclePlus className="size-4" />
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">New conversation</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Start with agent</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {ACTIVE_AGENT_TYPES.map(({ type, label }) => (
-                <DropdownMenuItem
-                  key={type}
-                  onClick={() => {
-                    void startNewSession(type);
-                    onNewSession?.();
-                  }}
-                >
-                  {label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          ) : (
+            /* Multiple personas — show agent picker dropdown */
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <MessageCirclePlus className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">New conversation</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Start with agent</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {ACTIVE_AGENT_TYPES.map(({ type, label }) => (
+                  <DropdownMenuItem
+                    key={type}
+                    onClick={() => { void startNewSession(type); onNewSession?.(); }}
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {sessions.length > 0 && onSelectSession && (
             <DropdownMenu>
               <Tooltip>
