@@ -67,6 +67,12 @@ export interface PendingSrsProposal {
   featureGroup: string;
 }
 
+export interface DevIntelligencePayload {
+  answer: string;
+  references: string[];
+  follow_up_suggestions: string[];
+}
+
 export type ChatMessage =
   | {
       id: string;
@@ -77,10 +83,18 @@ export type ChatMessage =
   | {
       id: string;
       role: "assistant";
+      kind: "srs";
       createdAt: number;
       structured: StructuredAssistantPayload;
       proposal?: PendingSrsProposal;
       proposalStatus?: "pending" | "accepted" | "rejected" | "edited";
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "dev_intelligence";
+      createdAt: number;
+      devIntelligence: DevIntelligencePayload;
     };
 
 export interface ValidationIssue {

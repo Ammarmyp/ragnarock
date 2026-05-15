@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   ChatMode,
   CoverageRow,
+  DevIntelligencePayload,
   HealthScores,
   InterviewStage,
   PendingSrsProposal,
@@ -70,6 +71,7 @@ export interface RequirementsWorkspaceState {
 
   isProcessing: boolean;
   agentError: string | null;
+  pendingPrompt: string | null;
   completedSpecId: string | null;
   completedSpec: AgentRequirementPayload | null;
   partialSrs: AgentPartialSrs | null;
@@ -95,9 +97,11 @@ export interface RequirementsWorkspaceState {
 
   setProcessing: (v: boolean) => void;
   setAgentError: (err: string | null) => void;
+  setPendingPrompt: (prompt: string | null) => void;
   appendBackendUserMessage: (text: string, messageId: string) => void;
   applyPartialSrs: (partial: AgentPartialSrs, questions: string[], assistantMessageId: string) => void;
   applyCompletedSrs: (spec: AgentRequirementPayload, specId: string, assistantMessageId: string) => void;
+  applyDevIntelligenceAnswer: (payload: DevIntelligencePayload, assistantMessageId: string) => void;
   hydrateSession: (params: {
     sessionId: string;
     messages: { id: string; role: "user" | "assistant"; content: string; payload?: unknown; createdAt: string }[];
@@ -140,6 +144,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
 
   isProcessing: false,
   agentError: null,
+  pendingPrompt: null,
   completedSpecId: null,
   completedSpec: null,
   partialSrs: null,
@@ -172,7 +177,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
   acceptProposal: (messageId) =>
     set((s) => {
       const msg = s.messages.find((m) => m.id === messageId);
-      if (!msg || msg.role !== "assistant" || !msg.proposal) return s;
+      if (!msg || msg.role !== "assistant" || msg.kind !== "srs" || !msg.proposal) return s;
       const p: PendingSrsProposal = msg.proposal;
       const nextSections = s.sections.map((sec) => {
         if (sec.id !== p.sectionId) return sec;
@@ -199,7 +204,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
   rejectProposal: (messageId) =>
     set((s) => ({
       messages: s.messages.map((m) =>
-        m.id === messageId && m.role === "assistant"
+        m.id === messageId && m.role === "assistant" && m.kind === "srs"
           ? { ...m, proposalStatus: "rejected" as const }
           : m,
       ),
@@ -235,6 +240,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
         {
           id: uid(),
           role: "assistant" as const,
+          kind: "srs" as const,
           createdAt: Date.now(),
           structured,
           proposal,
@@ -267,6 +273,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
 
   setProcessing: (v) => set({ isProcessing: v, agentError: null }),
   setAgentError: (err) => set({ agentError: err, isProcessing: false }),
+  setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
 
   appendBackendUserMessage: (text, messageId) =>
     set((s) => ({
@@ -292,6 +299,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
       const assistantMsg: ChatMessage = {
         id: assistantMessageId,
         role: "assistant" as const,
+        kind: "srs" as const,
         createdAt: Date.now(),
         structured: {
           contextSummary: `SRS is ${progress}% complete.`,
@@ -316,6 +324,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
       const assistantMsg: ChatMessage = {
         id: assistantMessageId,
         role: "assistant" as const,
+        kind: "srs" as const,
         createdAt: Date.now(),
         structured: {
           contextSummary: spec.business_owner_summary,
@@ -339,14 +348,45 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
       };
     }),
 
+  applyDevIntelligenceAnswer: (payload, assistantMessageId) =>
+    set((s) => {
+      const msg: ChatMessage = {
+        id: assistantMessageId,
+        role: "assistant" as const,
+        kind: "dev_intelligence" as const,
+        createdAt: Date.now(),
+        devIntelligence: payload,
+      };
+      return {
+        messages: [...s.messages, msg],
+        isProcessing: false,
+        agentError: null,
+      };
+    }),
+
   hydrateSession: ({ sessionId, messages, partialSrs, srsProgress, completedSpec, completedSpecId }) =>
     set((s) => {
       const chatMessages: ChatMessage[] = messages.map((m) => {
         if (m.role === "user") {
           return { id: m.id, role: "user" as const, content: m.content, createdAt: new Date(m.createdAt).getTime() };
         }
-        // Assistant — reconstruct structured shape from payload if present, else wrap content
+        // Assistant — reconstruct message shape from payload discriminated on status
         const payload = m.payload as Record<string, unknown> | null | undefined;
+
+        if (payload?.status === "answer") {
+          return {
+            id: m.id,
+            role: "assistant" as const,
+            kind: "dev_intelligence" as const,
+            createdAt: new Date(m.createdAt).getTime(),
+            devIntelligence: {
+              answer: (payload.answer as string) ?? m.content,
+              references: (payload.references as string[]) ?? [],
+              follow_up_suggestions: (payload.follow_up_suggestions as string[]) ?? [],
+            },
+          };
+        }
+
         const structured = payload?.status === "needs_clarification"
           ? {
               contextSummary: `SRS is ${srsProgress}% complete.`,
@@ -369,7 +409,7 @@ export const useRequirementsWorkspaceStore = create<RequirementsWorkspaceState>(
               nextQuestion: m.content,
               whyQuestion: "",
             };
-        return { id: m.id, role: "assistant" as const, createdAt: new Date(m.createdAt).getTime(), structured };
+        return { id: m.id, role: "assistant" as const, kind: "srs" as const, createdAt: new Date(m.createdAt).getTime(), structured };
       });
 
       const progress = completedSpec ? 100 : srsProgress;

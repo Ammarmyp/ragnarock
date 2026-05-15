@@ -10,6 +10,7 @@ import {
   addProjectMember,
   createProject,
   createProjectDocumentation,
+  generateProjectArchDoc,
   createProjectRequirement,
   createProjectSkill,
   createProjectTask,
@@ -66,6 +67,9 @@ import {
   type UpdateProjectSkillDto,
   type ReorderProjectTasksDto,
   type UpdateProjectTaskDto,
+  type ArchDocQueuedResponse,
+  type GenerateArchDocDto,
+  type ArchDocType,
 } from "@/api/projects.api";
 import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
 
@@ -293,6 +297,19 @@ export function useCreateProjectDocumentation(
     },
   });
 }
+export function useGenerateProjectArchDoc(
+  options?: UseMutationOptions<ArchDocQueuedResponse, Error, { projectId: string; data: GenerateArchDocDto }>,
+) {
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => generateProjectArchDoc(projectId, data),
+    onSuccess,
+  });
+}
+
+export type { ArchDocType };
+
 export function useCreateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; data: CreateProjectRequirementDto }>) {
   const queryClient = useQueryClient();
   const { onSuccess, ...rest } = options ?? {};

@@ -25,19 +25,24 @@ type RequirementsIntelligenceWorkspaceProps = {
 /** Icon + label for each agent type shown in the session strip. */
 const AGENT_META: Record<AgentSessionType, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
   requirements: { icon: FileText, label: "Requirements" },
-  developer_advisor: { icon: Code2, label: "Dev Advisor" },
+  developer_intelligence: { icon: Code2, label: "Dev Intelligence" },
+  project_planner: { icon: FileText, label: "Project Planner" },
+  qa_intelligence: { icon: FileText, label: "QA Intelligence" },
+  change_impact: { icon: FileText, label: "Change Impact" },
 };
 
 /** Right-panel component for each agent type. */
 function AgentRightPanel({
   agentType,
   onCollapse,
+  onSuggestionSelect,
 }: {
   agentType: AgentSessionType;
   onCollapse: () => void;
+  onSuggestionSelect: (prompt: string) => void;
 }) {
-  if (agentType === "developer_advisor") {
-    return <DeveloperAdvisorPanel onCollapse={onCollapse} />;
+  if (agentType === "developer_intelligence") {
+    return <DeveloperAdvisorPanel onCollapse={onCollapse} onSuggestionSelect={onSuggestionSelect} />;
   }
   return <SrsLeftPanel onCollapse={onCollapse} />;
 }
@@ -49,6 +54,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
   const hydrateSession = useRequirementsWorkspaceStore((s) => s.hydrateSession);
   const resetSession = useRequirementsWorkspaceStore((s) => s.resetSession);
   const setBaseSpec = useRequirementsWorkspaceStore((s) => s.setBaseSpec);
+  const setPendingPrompt = useRequirementsWorkspaceStore((s) => s.setPendingPrompt);
 
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -134,7 +140,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
   const activeSession = sessions.find((s) => s.id === backendAiChatSessionId);
   const activeAgentType: AgentSessionType = (activeSession as typeof activeSession & { agentType?: AgentSessionType })?.agentType ?? "requirements";
 
-  const rightPanelLabel = activeAgentType === "developer_advisor" ? "Dev Advisor" : "Show SRS";
+  const rightPanelLabel = activeAgentType === "developer_intelligence" ? "Dev Advisor" : "Show SRS";
 
   // Persona-based capability gating
   const { data: authSession } = authClient.useSession();
@@ -146,7 +152,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
   let interactionDisabledReason: string | undefined;
   if (currentPersona === "stakeholder") {
     interactionDisabledReason = "Stakeholders have read-only access. Contact the project admin to change your persona.";
-  } else if (activeAgentType === "developer_advisor" && currentPersona !== "developer") {
+  } else if (activeAgentType === "developer_intelligence" && currentPersona !== "developer") {
     interactionDisabledReason = "The Developer Advisor is only available to members with the Developer persona.";
   }
 
@@ -178,6 +184,7 @@ export function RequirementsIntelligenceWorkspace({ projectId }: RequirementsInt
             <AgentRightPanel
               agentType={activeAgentType}
               onCollapse={() => setRightPanelOpen(false)}
+              onSuggestionSelect={setPendingPrompt}
             />
           </RequirementsCollapsibleSide>
         </div>

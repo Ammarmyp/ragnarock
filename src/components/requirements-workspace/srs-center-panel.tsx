@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { ChatMessage } from "@/features/requirements-workspace/types";
+import { MarkdownContent } from "@/components/documentation/markdown-content";
+import type { ChatMessage, DevIntelligencePayload } from "@/features/requirements-workspace/types";
 import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
 import {
   useCreateProjectAiChatSession,
@@ -149,7 +150,7 @@ export function StageBar() {
   );
 }
 
-function AssistantMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistant" }> }) {
+function AssistantMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistant"; kind: "srs" }> }) {
   return (
     <div className="space-y-2 rounded-xl border border-border/60 bg-card/90 p-3.5 shadow-sm">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -202,7 +203,7 @@ function AssistantMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistan
   );
 }
 
-function CompletedMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistant" }> }) {
+function CompletedMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistant"; kind: "srs" }> }) {
   return (
     <div className="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3.5 shadow-sm">
       <Badge className="bg-emerald-600 px-2 py-0 text-xs font-normal text-white">
@@ -210,6 +211,59 @@ function CompletedMessage({ msg }: { msg: Extract<ChatMessage, { role: "assistan
       </Badge>
       <p className="text-sm leading-relaxed font-medium">{msg.structured.contextSummary}</p>
       <p className="text-muted-foreground text-sm leading-relaxed">{msg.structured.nextQuestion}</p>
+    </div>
+  );
+}
+
+function DevIntelligenceMessage({
+  payload,
+  onFollowUp,
+}: {
+  payload: DevIntelligencePayload;
+  onFollowUp: (prompt: string) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border/60 bg-card/90 p-3.5 shadow-sm">
+      <div className="flex items-center gap-1.5">
+        <Badge variant="secondary" className="px-2 py-0 text-xs font-normal">
+          Dev Intelligence
+        </Badge>
+      </div>
+
+      <MarkdownContent content={payload.answer} />
+
+      {payload.references.length > 0 && (
+        <div className="border-border/40 border-t pt-2.5">
+          <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+            References
+          </p>
+          <ul className="text-muted-foreground list-inside list-disc space-y-0.5 text-xs leading-relaxed">
+            {payload.references.map((ref, i) => (
+              <li key={i}>{ref}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {payload.follow_up_suggestions.length > 0 && (
+        <div className="border-border/40 border-t pt-2.5">
+          <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+            Follow-up questions
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {payload.follow_up_suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onFollowUp(s)}
+                className="text-muted-foreground bg-muted/50 hover:bg-muted hover:text-foreground rounded-full px-2.5 py-0.5 text-xs transition-colors cursor-pointer"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -245,28 +299,62 @@ function ProcessingIndicator() {
   );
 }
 
-const QUICK_STARTERS = [
-  "I want to build a project management tool for small teams",
-  "I need a mobile app for tracking daily habits and goals",
-  "Build me an e-commerce platform with inventory management",
-  "I want a customer support ticketing system with AI triage",
-];
+function getQuickStarters(agentType: AgentSessionType, projectName?: string): string[] {
+  if (agentType === "developer_intelligence") {
+    return projectName
+      ? [
+          `What's the best architecture for ${projectName}?`,
+          `What tech stack should I use for ${projectName}?`,
+          `How should I handle authentication in ${projectName}?`,
+          `What are the key technical risks in ${projectName}?`,
+        ]
+      : [
+          "What architecture pattern fits this project best?",
+          "What tech stack should I use based on the requirements?",
+          "How should I structure the database schema?",
+          "What are the main technical risks I should address?",
+        ];
+  }
 
-function QuickStarters({
-  projectName,
-  onSelect,
-}: {
-  projectName?: string;
-  onSelect: (text: string) => void;
-}) {
-  const starters = projectName
+  // requirements agent
+  return projectName
     ? [
         `I'm building ${projectName}. Let me describe what it does...`,
         `${projectName} needs to solve the following problem...`,
         `The main users of ${projectName} are...`,
         `The core features I need in ${projectName} are...`,
       ]
-    : QUICK_STARTERS;
+    : [
+        "I want to build a project management tool for small teams",
+        "I need a mobile app for tracking daily habits and goals",
+        "Build me an e-commerce platform with inventory management",
+        "I want a customer support ticketing system with AI triage",
+      ];
+}
+
+function getHeroText(agentType: AgentSessionType, projectName?: string): { title: string; subtitle: string } {
+  if (agentType === "developer_intelligence") {
+    return {
+      title: projectName ? `Build ${projectName}` : "Developer Intelligence",
+      subtitle: "Ask architecture, stack, or implementation questions grounded in your project SRS.",
+    };
+  }
+  return {
+    title: projectName ? `Define ${projectName}` : "Start the interview",
+    subtitle: "Describe your project and the AI will ask focused questions to build your SRS section by section.",
+  };
+}
+
+function QuickStarters({
+  agentType,
+  projectName,
+  onSelect,
+}: {
+  agentType: AgentSessionType;
+  projectName?: string;
+  onSelect: (text: string) => void;
+}) {
+  const starters = getQuickStarters(agentType, projectName);
 
   return (
     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -294,8 +382,16 @@ function sessionLabel(session: SessionItem, index: number): string {
 
 const AGENT_LABEL: Record<AgentSessionType, string> = {
   requirements: "Requirements",
-  developer_advisor: "Dev Advisor",
+  developer_intelligence: "Dev Intelligence",
+  project_planner: "Project Planner",
+  qa_intelligence: "QA Intelligence",
+  change_impact: "Change Impact",
 };
+
+const ACTIVE_AGENT_TYPES: { type: AgentSessionType; label: string }[] = [
+  { type: "requirements", label: "Requirements Agent" },
+  { type: "developer_intelligence", label: "Developer Intelligence" },
+];
 
 export function SrsCenterPanel({
   interactionDisabledReason,
@@ -320,6 +416,9 @@ export function SrsCenterPanel({
   const setBackendAiChatSessionId = useRequirementsWorkspaceStore((s) => s.setBackendAiChatSessionId);
   const setAgentError = useRequirementsWorkspaceStore((s) => s.setAgentError);
   const appendBackendUserMessage = useRequirementsWorkspaceStore((s) => s.appendBackendUserMessage);
+  const resetSession = useRequirementsWorkspaceStore((s) => s.resetSession);
+  const pendingPrompt = useRequirementsWorkspaceStore((s) => s.pendingPrompt);
+  const setPendingPrompt = useRequirementsWorkspaceStore((s) => s.setPendingPrompt);
 
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -334,7 +433,7 @@ export function SrsCenterPanel({
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing]);
 
-  const send = useCallback(async (text: string) => {
+  const send = useCallback(async (text: string, agentType?: AgentSessionType) => {
     const body = text.trim();
     if (!body || !projectId) return;
 
@@ -343,7 +442,7 @@ export function SrsCenterPanel({
     try {
       let sessionId = backendAiChatSessionId;
       if (!sessionId) {
-        const session = await createSession.mutateAsync({ projectId });
+        const session = await createSession.mutateAsync({ projectId, data: agentType ? { agentType } : undefined });
         sessionId = session.id;
         setBackendAiChatSessionId(sessionId);
       }
@@ -359,8 +458,29 @@ export function SrsCenterPanel({
     setBackendAiChatSessionId, setAgentError,
   ]);
 
+  useEffect(() => {
+    if (!pendingPrompt) return;
+    setPendingPrompt(null);
+    void send(pendingPrompt);
+  }, [pendingPrompt, setPendingPrompt, send]);
+
+  const startNewSession = useCallback(async (agentType: AgentSessionType) => {
+    if (!projectId) return;
+    try {
+      resetSession();
+      const session = await createSession.mutateAsync({ projectId, data: { agentType } });
+      setBackendAiChatSessionId(session.id);
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : "Failed to create session.");
+    }
+  }, [projectId, createSession, resetSession, setBackendAiChatSessionId, setAgentError]);
+
   const isSending = createSession.isPending || submitTurn.isPending;
   const showHero = messages.length === 0 && !isProcessing && !isSending;
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const activeAgentType: AgentSessionType = (activeSession?.agentType as AgentSessionType | undefined) ?? "requirements";
+  const heroText = getHeroText(activeAgentType, project?.name);
   const gradientColors: [string, string, string, string] =
     resolvedTheme === "dark"
       ? ["#C4B5DE", "#9B85C8", "#B09ED4", "#D6CAEB"]
@@ -371,20 +491,36 @@ export function SrsCenterPanel({
       <Card className="relative flex h-full min-h-0 w-full flex-col overflow-hidden border-border/70 bg-card/80 shadow-sm backdrop-blur-sm">
         {/* Top-right session controls */}
         <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
-          {onNewSession && (
+          <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onNewSession}
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <MessageCirclePlus className="size-4" />
-                </button>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <MessageCirclePlus className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">New conversation</TooltipContent>
             </Tooltip>
-          )}
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Start with agent</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {ACTIVE_AGENT_TYPES.map(({ type, label }) => (
+                <DropdownMenuItem
+                  key={type}
+                  onClick={() => {
+                    void startNewSession(type);
+                    onNewSession?.();
+                  }}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {sessions.length > 0 && onSelectSession && (
             <DropdownMenu>
               <Tooltip>
@@ -496,16 +632,15 @@ export function SrsCenterPanel({
               >
                 <Sparkles className="text-muted-foreground mb-3 size-8 opacity-60" />
                 <p className="text-foreground text-xl font-semibold tracking-tight">
-                  {project?.name ? `Define ${project.name}` : "Start the interview"}
+                  {heroText.title}
                 </p>
                 <p className="text-muted-foreground mt-2 max-w-sm text-sm leading-relaxed">
-                  Describe your project and the AI will ask focused questions to build your SRS section by section.
+                  {heroText.subtitle}
                 </p>
                 <QuickStarters
+                  agentType={activeAgentType}
                   projectName={project?.name}
-                  onSelect={(text) => {
-                    setDraft(text);
-                  }}
+                  onSelect={(text) => void send(text)}
                 />
               </motion.div>
             )}
@@ -520,10 +655,12 @@ export function SrsCenterPanel({
                 >
                   {m.role === "user" ? (
                     <UserBubble content={m.content} />
+                  ) : m.kind === "dev_intelligence" ? (
+                    <DevIntelligenceMessage payload={m.devIntelligence} onFollowUp={setPendingPrompt} />
                   ) : completedSpec && m === messages[messages.length - 1] ? (
-                    <CompletedMessage msg={m} />
+                    <CompletedMessage msg={m as Extract<ChatMessage, { role: "assistant"; kind: "srs" }>} />
                   ) : (
-                    <AssistantMessage msg={m} />
+                    <AssistantMessage msg={m as Extract<ChatMessage, { role: "assistant"; kind: "srs" }>} />
                   )}
                 </motion.div>
               ))}

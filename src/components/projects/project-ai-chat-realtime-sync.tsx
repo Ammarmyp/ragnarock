@@ -19,6 +19,7 @@ export function ProjectAiChatRealtimeSync(props: { projectId: string; sessionId:
   const queryClient = useQueryClient();
   const applyPartialSrs = useRequirementsWorkspaceStore((s) => s.applyPartialSrs);
   const applyCompletedSrs = useRequirementsWorkspaceStore((s) => s.applyCompletedSrs);
+  const applyDevIntelligenceAnswer = useRequirementsWorkspaceStore((s) => s.applyDevIntelligenceAnswer);
   const setAgentError = useRequirementsWorkspaceStore((s) => s.setAgentError);
 
   const onTurnCompleted = useCallback(
@@ -51,9 +52,18 @@ export function ProjectAiChatRealtimeSync(props: { projectId: string; sessionId:
           payload.specificationId ?? "",
           payload.assistantMessageId,
         );
+      } else if (agent.status === "answer") {
+        applyDevIntelligenceAnswer(
+          {
+            answer: (agent.answer as string) ?? "",
+            references: (agent.references as string[]) ?? [],
+            follow_up_suggestions: (agent.follow_up_suggestions as string[]) ?? [],
+          },
+          payload.assistantMessageId,
+        );
       }
     },
-    [props.projectId, props.sessionId, queryClient, applyPartialSrs, applyCompletedSrs],
+    [props.projectId, props.sessionId, queryClient, applyPartialSrs, applyCompletedSrs, applyDevIntelligenceAnswer],
   );
 
   const onTurnFailed = useCallback(

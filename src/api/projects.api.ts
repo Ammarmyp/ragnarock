@@ -75,7 +75,14 @@ export const PROJECT_PERSONA_LABELS: Record<ProjectPersona, string> = {
   stakeholder: "Stakeholder",
 };
 
-export type AgentSessionType = "requirements" | "developer_advisor";
+export type AgentSessionType =
+  | "requirements"
+  | "developer_intelligence"
+  | "project_planner"
+  | "qa_intelligence"
+  | "change_impact";
+
+export type ArchDocType = "sad" | "hld" | "lld" | "adr";
 
 export interface ProjectMember {
   id: string;
@@ -798,6 +805,27 @@ export async function submitProjectAiRequirementsUpload(
     ],
   });
   return parseResponseData<AiTurnQueuedResponse>(response);
+}
+
+export interface GenerateArchDocDto {
+  docType: ArchDocType;
+  layer?: string;
+}
+
+export interface ArchDocQueuedResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export async function generateProjectArchDoc(
+  projectId: string,
+  data: GenerateArchDocDto,
+): Promise<ArchDocQueuedResponse> {
+  const response = await apiClient.post<unknown>(
+    PROJECT_ENDPOINTS.AI_ARCH_DOC_GENERATE(projectId),
+    data,
+  );
+  return parseResponseData<ArchDocQueuedResponse>(response);
 }
 
 // ─── Project specifications ──────────────────────────────────────────────────
