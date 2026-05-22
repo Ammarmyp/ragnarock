@@ -219,7 +219,7 @@ export function ProjectOverviewDashboard({
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`${base}/requirements`}>
+            <Link href={`${base}/ragnarock`}>
               <FileText className="mr-1.5 size-4" />
               Requirements
             </Link>
@@ -408,7 +408,7 @@ export function ProjectOverviewDashboard({
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base">Requirements</CardTitle>
             <Button variant="link" className="text-primary h-auto px-0 text-sm" asChild>
-              <Link href={`${base}/requirements`}>View all</Link>
+              <Link href={`${base}/ragnarock`}>View all</Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -438,7 +438,7 @@ export function ProjectOverviewDashboard({
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" className="size-8 shrink-0" asChild>
-                    <Link href={`${base}/requirements`} aria-label="Open requirements">
+                    <Link href={`${base}/ragnarock`} aria-label="Open requirements">
                       <MoreHorizontal className="size-4" />
                     </Link>
                   </Button>

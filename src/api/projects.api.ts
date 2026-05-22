@@ -60,11 +60,36 @@ export interface UpdateProjectDto {
   status?: Project["status"];
 }
 
+export type ProjectPersona =
+  | "business_owner"
+  | "developer"
+  | "qa_engineer"
+  | "project_manager"
+  | "stakeholder";
+
+export const PROJECT_PERSONA_LABELS: Record<ProjectPersona, string> = {
+  business_owner: "Business Owner",
+  developer: "Developer",
+  qa_engineer: "QA Engineer",
+  project_manager: "Project Manager",
+  stakeholder: "Stakeholder",
+};
+
+export type AgentSessionType =
+  | "requirements"
+  | "developer_intelligence"
+  | "project_planner"
+  | "qa_intelligence"
+  | "change_impact";
+
+export type ArchDocType = "sad" | "hld" | "lld" | "adr";
+
 export interface ProjectMember {
   id: string;
   projectId: string;
   userId: string;
   role: "owner" | "admin" | "member" | "viewer";
+  personas: ProjectPersona[];
   joinedAt: string;
   user?: {
     id: string;
@@ -78,6 +103,11 @@ export interface AddProjectMemberDto {
   userId?: string;
   email?: string;
   role: ProjectMember["role"];
+  personas?: ProjectPersona[];
+}
+
+export interface UpdateProjectMemberPersonasDto {
+  personas: ProjectPersona[];
 }
 
 export type ProjectRoleSummary = { role: ProjectMember["role"] };
@@ -462,6 +492,18 @@ export async function updateProjectMemberRole(
   return parseResponseData<ProjectMember>(response);
 }
 
+export async function updateProjectMemberPersonas(
+  projectId: string,
+  userId: string,
+  personas: ProjectPersona[],
+): Promise<ProjectMember> {
+  const response = await apiClient.patch<unknown>(
+    `${PROJECT_ENDPOINTS.MEMBER(projectId, userId)}/persona`,
+    { personas },
+  );
+  return parseResponseData<ProjectMember>(response);
+}
+
 export async function getProjectRole(projectId: string): Promise<ProjectRoleSummary> {
   const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.MY_ROLE(projectId));
   return parseResponseData<ProjectRoleSummary>(response);
@@ -664,6 +706,7 @@ export interface ProjectAiChatSession {
   projectId: string;
   createdBy: string;
   title: string | null;
+  agentType: AgentSessionType;
   createdAt: string;
   updatedAt: string;
   author?: { id: string; name?: string | null; email?: string | null };
@@ -703,6 +746,7 @@ export interface AiTurnQueuedResponse {
 
 export interface CreateProjectAiChatSessionDto {
   title?: string;
+  agentType?: AgentSessionType;
 }
 
 export async function createProjectAiChatSession(
@@ -761,4 +805,100 @@ export async function submitProjectAiRequirementsUpload(
     ],
   });
   return parseResponseData<AiTurnQueuedResponse>(response);
+}
+
+export interface GenerateArchDocDto {
+  docType: ArchDocType;
+  layer?: string;
+}
+
+export interface ArchDocQueuedResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export async function generateProjectArchDoc(
+  projectId: string,
+  data: GenerateArchDocDto,
+): Promise<ArchDocQueuedResponse> {
+  const response = await apiClient.post<unknown>(
+    PROJECT_ENDPOINTS.AI_ARCH_DOC_GENERATE(projectId),
+    data,
+  );
+  return parseResponseData<ArchDocQueuedResponse>(response);
+}
+
+// ─── Project specifications ──────────────────────────────────────────────────
+
+export type AgentPartialSrs = {
+  project_name?: string | null;
+  summary?: string | null;
+  features?: { name: string; description: string }[];
+  user_roles?: string[];
+  functional_requirements?: string[];
+  non_functional_requirements?: string[];
+  user_stories?: { role: string; goal: string; benefit: string }[];
+  acceptance_criteria?: string[];
+  out_of_scope?: string[];
+};
+
+export interface ProjectAiChatSessionWithProgress extends ProjectAiChatSession {
+  partialSrs?: AgentPartialSrs | null;
+  srsProgress: number;
+}
+
+/** The project's single shared draft SRS — every new chat continues from this. */
+export interface ProjectAiDraft {
+  draftSrs: AgentPartialSrs | null;
+  draftSrsProgress: number;
+}
+
+export async function getProjectAiDraft(projectId: string): Promise<ProjectAiDraft> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.AI_DRAFT(projectId));
+  return parseResponseData<ProjectAiDraft>(response);
+}
+
+export interface ProjectSpecification {
+  id: string;
+  projectId: string;
+  chatSessionId?: string | null;
+  createdBy: string;
+  title?: string | null;
+  payload: AgentRequirementPayload;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; name?: string | null; email?: string | null };
+}
+
+export interface AgentRequirementPayload {
+  status: "complete";
+  project_name: string;
+  summary: string;
+  features: { name: string; description: string }[];
+  functional_requirements: string[];
+  non_functional_requirements: string[];
+  user_stories: { role: string; goal: string; benefit: string }[];
+  acceptance_criteria: string[];
+  out_of_scope?: string[];
+  business_owner_summary: string;
+}
+
+export async function listProjectSpecifications(
+  projectId: string,
+  params: PaginationParams = { page: 1, limit: 20 },
+): Promise<PaginatedResponse<ProjectSpecification>> {
+  const response = await apiClient.get<unknown>(
+    `${PROJECT_ENDPOINTS.SPECIFICATIONS(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
+  );
+  return parseResponseData<PaginatedResponse<ProjectSpecification>>(response);
+}
+
+export async function getProjectSpecification(
+  projectId: string,
+  specificationId: string,
+): Promise<ProjectSpecification> {
+  const response = await apiClient.get<unknown>(
+    PROJECT_ENDPOINTS.SPECIFICATION(projectId, specificationId),
+  );
+  return parseResponseData<ProjectSpecification>(response);
 }

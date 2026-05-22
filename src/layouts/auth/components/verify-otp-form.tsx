@@ -130,8 +130,12 @@ export function VerifyOtpForm() {
       }
 
       toast.success("OTP verified successfully", { id: loadingToast });
-      router.replace(redirectTo);
-      router.refresh();
+      if (flow === "email-verification") {
+        router.replace(`/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`);
+      } else {
+        router.replace(redirectTo);
+        router.refresh();
+      }
     } catch (error) {
       console.error("OTP verification failed", error);
       toast.error("Could not verify OTP");

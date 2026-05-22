@@ -10,6 +10,7 @@ import {
   addProjectMember,
   createProject,
   createProjectDocumentation,
+  generateProjectArchDoc,
   createProjectRequirement,
   createProjectSkill,
   createProjectTask,
@@ -36,6 +37,7 @@ import {
   updateProject,
   updateProjectDocumentation,
   updateProjectMemberRole,
+  updateProjectMemberPersonas,
   updateProjectRequirement,
   updateProjectSkill,
   updateProjectTask,
@@ -53,6 +55,7 @@ import {
   type ProjectOverviewResponse,
   type ProjectDocumentation,
   type ProjectMember,
+  type ProjectPersona,
   type ProjectRequirement,
   type ProjectRoleSummary,
   type ProjectSkill,
@@ -64,6 +67,9 @@ import {
   type UpdateProjectSkillDto,
   type ReorderProjectTasksDto,
   type UpdateProjectTaskDto,
+  type ArchDocQueuedResponse,
+  type GenerateArchDocDto,
+  type ArchDocType,
 } from "@/api/projects.api";
 import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
 
@@ -93,6 +99,7 @@ export const projectKeys = {
     [...projectKeys.detail(projectId), "ai-chat-messages", sessionId, params] as const,
   specifications: (projectId: string, params: PaginationParams) =>
     [...projectKeys.detail(projectId), "specifications", params] as const,
+  aiDraft: (projectId: string) => [...projectKeys.detail(projectId), "ai-draft"] as const,
 };
 
 export function invalidateProjectOverview(queryClient: QueryClient, projectId: string) {
@@ -236,6 +243,21 @@ export function useUpdateProjectMemberRole(options?: UseMutationOptions<ProjectM
     },
   });
 }
+export function useUpdateProjectMemberPersonas(
+  options?: UseMutationOptions<ProjectMember, Error, { projectId: string; userId: string; personas: ProjectPersona[] }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, userId, personas }) => updateProjectMemberPersonas(projectId, userId, personas),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
 export function useRemoveProjectMember(options?: UseMutationOptions<void, Error, { projectId: string; userId: string }>) {
   const queryClient = useQueryClient();
   const { onSuccess, ...rest } = options ?? {};
@@ -275,6 +297,19 @@ export function useCreateProjectDocumentation(
     },
   });
 }
+export function useGenerateProjectArchDoc(
+  options?: UseMutationOptions<ArchDocQueuedResponse, Error, { projectId: string; data: GenerateArchDocDto }>,
+) {
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId, data }) => generateProjectArchDoc(projectId, data),
+    onSuccess,
+  });
+}
+
+export type { ArchDocType };
+
 export function useCreateProjectRequirement(options?: UseMutationOptions<ProjectRequirement, Error, { projectId: string; data: CreateProjectRequirementDto }>) {
   const queryClient = useQueryClient();
   const { onSuccess, ...rest } = options ?? {};

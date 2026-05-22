@@ -11,13 +11,13 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Bot,
   FileText,
   FolderKanban,
   GitBranch,
   KeyRound,
   LayoutDashboard,
   ListChecks,
-  MessageSquare,
   Plug,
   Link2,
   ScrollText,
@@ -126,10 +126,10 @@ export function AppSidebar({
           title: projectSectionTitle,
           items: [
             { title: "Overview", href: `${base}/overview`, icon: LayoutDashboard },
+            { title: "Ragnarock", href: `${base}/ragnarock`, icon: Bot },
             { title: "Documentation", href: `${base}/documentation`, icon: FileText },
             { title: "Skills", href: `${base}/skills`, icon: Sparkles },
             { title: "Tasks", href: `${base}/tasks`, icon: ListChecks },
-            { title: "AI Interface", href: `${base}/requirements`, icon: ScrollText },
             { title: "Members", href: `${base}/members`, icon: Users },
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
             { title: "Repositories", href: `${base}/repositories`, icon: GitBranch },
