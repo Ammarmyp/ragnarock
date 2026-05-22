@@ -908,6 +908,13 @@ export async function generateProjectPlan(projectId: string): Promise<PlannerQue
   return parseResponseData<PlannerQueuedResponse>(response);
 }
 
+export async function generateProjectQaTestSuite(projectId: string): Promise<{ jobId: string; status: "queued" }> {
+  const response = await apiClient.post<unknown>(
+    PROJECT_ENDPOINTS.AI_QA_GENERATE(projectId),
+  );
+  return parseResponseData<{ jobId: string; status: "queued" }>(response);
+}
+
 // ─── Project specifications ──────────────────────────────────────────────────
 
 export type AgentPartialSrs = {

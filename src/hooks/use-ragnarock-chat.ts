@@ -9,6 +9,7 @@ import {
   createRagnarockSession,
   generateProjectPlan,
   generateProjectArchDoc,
+  generateProjectQaTestSuite,
   type RagnarockChatQueuedResponse,
   type RagnarockDetectedAction,
   type ArchDocType,
@@ -40,6 +41,13 @@ export type ArchDocFailedEvent = { jobId: string; error: string };
 export type PlannerCompletedEvent = { jobId: string; taskCount: number };
 export type PlannerFailedEvent = { jobId: string; error: string };
 
+export type QaIntelligenceCompletedEvent = {
+  jobId: string;
+  documentationId: string;
+  title: string;
+};
+export type QaIntelligenceFailedEvent = { jobId: string; error: string };
+
 export type UseRagnarockSocketOptions = {
   projectId: string | null;
   enabled?: boolean;
@@ -50,6 +58,8 @@ export type UseRagnarockSocketOptions = {
   onArchDocFailed?: (payload: ArchDocFailedEvent) => void;
   onPlannerCompleted?: (payload: PlannerCompletedEvent) => void;
   onPlannerFailed?: (payload: PlannerFailedEvent) => void;
+  onQaCompleted?: (payload: QaIntelligenceCompletedEvent) => void;
+  onQaFailed?: (payload: QaIntelligenceFailedEvent) => void;
 };
 
 export function useRagnarockSocket(options: UseRagnarockSocketOptions) {
@@ -77,6 +87,8 @@ export function useRagnarockSocket(options: UseRagnarockSocketOptions) {
     const onDocFail = (p: ArchDocFailedEvent) => callbacksRef.current.onArchDocFailed?.(p);
     const onPlanDone = (p: PlannerCompletedEvent) => callbacksRef.current.onPlannerCompleted?.(p);
     const onPlanFail = (p: PlannerFailedEvent) => callbacksRef.current.onPlannerFailed?.(p);
+    const onQaDone = (p: QaIntelligenceCompletedEvent) => callbacksRef.current.onQaCompleted?.(p);
+    const onQaFail = (p: QaIntelligenceFailedEvent) => callbacksRef.current.onQaFailed?.(p);
 
     socket.on("ragnarock_chat_processing", onProc);
     socket.on("ragnarock_chat_completed", onDone);
@@ -85,6 +97,8 @@ export function useRagnarockSocket(options: UseRagnarockSocketOptions) {
     socket.on("arch_doc_failed", onDocFail);
     socket.on("planner_completed", onPlanDone);
     socket.on("planner_failed", onPlanFail);
+    socket.on("qa_intelligence_completed", onQaDone);
+    socket.on("qa_intelligence_failed", onQaFail);
 
     const joinProject = () => socket.emit("join_project", { projectId });
     socket.on("connect", joinProject);
@@ -98,6 +112,8 @@ export function useRagnarockSocket(options: UseRagnarockSocketOptions) {
       socket.off("arch_doc_failed", onDocFail);
       socket.off("planner_completed", onPlanDone);
       socket.off("planner_failed", onPlanFail);
+      socket.off("qa_intelligence_completed", onQaDone);
+      socket.off("qa_intelligence_failed", onQaFail);
       socket.off("connect", joinProject);
       socket.disconnect();
     };
@@ -148,5 +164,14 @@ export function useGenerateArchDoc(
   return useMutation({
     ...options,
     mutationFn: ({ projectId, docType }) => generateProjectArchDoc(projectId, { docType }),
+  });
+}
+
+export function useGenerateQaTestSuite(
+  options?: UseMutationOptions<{ jobId: string; status: "queued" }, Error, { projectId: string }>,
+) {
+  return useMutation({
+    ...options,
+    mutationFn: ({ projectId }) => generateProjectQaTestSuite(projectId),
   });
 }

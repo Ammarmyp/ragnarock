@@ -68,6 +68,7 @@ export const PROJECT_ENDPOINTS = {
   AI_REQUIREMENTS_UPLOAD: (projectId: string) => `/projects/${projectId}/ai/requirements/upload`,
   AI_ARCH_DOC_GENERATE: (projectId: string) => `/projects/${projectId}/ai/arch-doc/generate`,
   AI_PLAN_GENERATE: (projectId: string) => `/projects/${projectId}/ai/plan/generate`,
+  AI_QA_GENERATE: (projectId: string) => `/projects/${projectId}/ai/qa/generate`,
   AI_RAGNAROCK_CHAT: (projectId: string) => `/projects/${projectId}/ai/ragnarock/chat`,
   AI_RAGNAROCK_SESSIONS: (projectId: string) => `/projects/${projectId}/ai/ragnarock/sessions`,
   AI_RAGNAROCK_SESSION: (projectId: string, sessionId: string) => `/projects/${projectId}/ai/ragnarock/sessions/${sessionId}`,
