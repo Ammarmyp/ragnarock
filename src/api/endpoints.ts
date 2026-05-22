@@ -102,8 +102,20 @@ export const GITHUB_REPO_ENDPOINTS = {
 export const INTEGRATION_ENDPOINTS = {
   LIST: "/integrations",
   LINEAR_CONNECT: "/integrations/linear",
+  LINEAR_TEAMS: "/integrations/linear/teams",
+  LINEAR_PROJECTS: "/integrations/linear/projects",
   DISCONNECT: (provider: string) => `/integrations/${provider}`,
   VERIFY: (provider: string) => `/integrations/${provider}/verify`,
+} as const;
+
+export const LINEAR_SYNC_ENDPOINTS = {
+  STATUS: (projectId: string) => `/projects/${projectId}/linear`,
+  LINK: (projectId: string) => `/projects/${projectId}/linear/link`,
+  SETTINGS: (projectId: string) => `/projects/${projectId}/linear/settings`,
+  IMPORT: (projectId: string) => `/projects/${projectId}/linear/import`,
+  EXPORT: (projectId: string) => `/projects/${projectId}/linear/export`,
+  SYNC: (projectId: string) => `/projects/${projectId}/linear/sync`,
+  SYNC_RUNS: (projectId: string) => `/projects/${projectId}/linear/sync-runs`,
 } as const;
 
 /**

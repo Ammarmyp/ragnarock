@@ -7,6 +7,7 @@ import {
   clearLastActiveOrganizationIdClient,
   getLastActiveOrganizationIdClient,
 } from "@/lib/organization/last-active-organization";
+import { WorkspaceLoadingState } from "@/components/feedback/feedback-state";
 
 /**
  * Paths allowed when a user is signed in but has NO active organization yet.
@@ -94,7 +95,12 @@ export function DashboardAuthGate({ children }: { children: React.ReactNode }) {
   }, [activeLoading, activeOrganization?.id, isExempt, pathname, restoreAttemptFinished, restoreFailed, router]);
 
   if (!isExempt && (activeLoading || !restoreAttemptFinished || !activeOrganization?.id)) {
-    return null;
+    return (
+      <WorkspaceLoadingState
+        title="Opening workspace"
+        description="Restoring your organization session…"
+      />
+    );
   }
 
   return <>{children}</>;

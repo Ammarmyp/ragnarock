@@ -8,6 +8,10 @@ import { safeDashboardRedirect } from "@/lib/auth/redirect";
 import { toast } from "@/lib/toast";
 import { setLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
 import {
+  OrganizationLoadError,
+  WorkspaceLoadingState,
+} from "@/components/feedback/feedback-state";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -24,7 +28,7 @@ export function SelectOrganizationContent() {
     [searchParams],
   );
 
-  const { data: organizations, isPending, error } = authClient.useListOrganizations();
+  const { data: organizations, isPending, error, refetch } = authClient.useListOrganizations();
   const { data: activeOrganization, isPending: isActivePending } =
     authClient.useActiveOrganization();
 
@@ -124,25 +128,28 @@ export function SelectOrganizationContent() {
   const orgCount = organizations?.length ?? 0;
   const showMultiOrgChooser = !isPending && !error && orgCount > 1;
 
+  if (error) {
+    return (
+      <OrganizationLoadError
+        onRetry={() => void refetch()}
+        message={error instanceof Error ? error.message : undefined}
+      />
+    );
+  }
+
+  if (isPending) {
+    return <WorkspaceLoadingState />;
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      {error && (
-        <Card className="w-full max-w-lg">
-          <CardContent className="pt-6">
-            <p className="text-destructive text-sm">
-              Could not load organizations. Refresh the page or try again later.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      {isPending && (
-        <p className="text-muted-foreground text-sm">Loading organizations…</p>
-      )}
-      {!isPending && !error && orgCount === 1 && !singleOrgActivationFailed && (
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Building2 className="text-muted-foreground size-8" />
-          <p className="text-muted-foreground text-sm">Opening your workspace…</p>
-        </div>
+      {!singleOrgActivationFailed && orgCount === 1 && (
+        <WorkspaceLoadingState
+          layout="inline"
+          title="Opening your workspace"
+          description="Activating your organization…"
+          className="max-w-lg"
+        />
       )}
       {(showMultiOrgChooser || (orgCount === 1 && singleOrgActivationFailed)) && (
         <Card className="w-full max-w-lg">

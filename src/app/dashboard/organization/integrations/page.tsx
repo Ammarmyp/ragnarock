@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Plug } from "lucide-react";
+import { ArrowLeft, Plug, PlugZap } from "lucide-react";
+import { FeedbackState, FeedbackRetryActions } from "@/components/feedback/feedback-state";
 import { DashboardLayout } from "@/layouts/dashboard/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export default function OrganizationIntegrationsPage() {
   const { data: activeMemberRole } = authClient.useActiveMemberRole();
   const isOrgAdmin = activeMemberRole?.role === "owner" || activeMemberRole?.role === "admin";
 
-  const { data, isLoading, isError } = useIntegrations();
+  const { data, isLoading, isError, refetch } = useIntegrations();
   const [linearPat, setLinearPat] = useState("");
 
   const connectLinearMutation = useConnectLinear({
@@ -84,14 +85,35 @@ export default function OrganizationIntegrationsPage() {
           </div>
           <p className="text-sm text-muted-foreground">
             Connect third-party tools for your active organization. Tokens are stored encrypted on the server; only
-            organization owners and admins can connect or disconnect.
+            organization owners and admins can connect or disconnect. After connecting Linear, open a project and use
+            Linear in the sidebar to link and sync tasks.
           </p>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading integrations…</p>
+          <FeedbackState
+            variant="loading"
+            icon={PlugZap}
+            title="Loading integrations"
+            description="Fetching connection status for your organization."
+          />
         ) : isError ? (
-          <p className="text-sm text-destructive">Could not load integrations. Check that an organization is active.</p>
+          <FeedbackState
+            variant="error"
+            icon={Plug}
+            title="Could not load integrations"
+            description="Make sure you have an active organization selected, then try again."
+            actions={
+              <FeedbackRetryActions
+                onRetry={() => void refetch()}
+                secondaryAction={
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/organization/select">Choose organization</Link>
+                  </Button>
+                }
+              />
+            }
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {connections.map((c) => (
