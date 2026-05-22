@@ -14,7 +14,7 @@ type ProjectWorkspaceLayoutProps = {
 export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspaceLayoutProps) {
   const pathname = usePathname();
   const isProjectOverview = pathname?.includes("/overview");
-  const isFullBleed = isProjectOverview || pathname?.includes("/ragnarock");
+  const isFullBleed = pathname?.includes("/ragnarock");
   void useProject(projectId);
   const setSelectedProjectId = useProjectWorkspaceStore((state) => state.setSelectedProjectId);
 
@@ -25,23 +25,21 @@ export function ProjectWorkspaceLayout({ projectId, children }: ProjectWorkspace
 
   return (
     <DashboardLayout>
-      <div
-        className={
-          isFullBleed
-            ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-            : "flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4 md:p-5"
-        }
-      >
-        <div
-          className={
-            isProjectOverview
-              ? "flex min-h-0 flex-1 flex-col px-4 pb-8 pt-4 md:px-6"
-              : "flex min-h-0 flex-1 flex-col overflow-hidden"
-          }
-        >
+      {isFullBleed ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {children}
         </div>
-      </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 md:p-5">
+          {isProjectOverview ? (
+            <div className="flex flex-col px-4 pb-8 pt-4 md:px-6">
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      )}
     </DashboardLayout>
   );
 }
