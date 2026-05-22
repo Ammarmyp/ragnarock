@@ -11,6 +11,7 @@ import {
   createProject,
   createProjectDocumentation,
   generateProjectArchDoc,
+  generateProjectPlan,
   createProjectRequirement,
   createProjectSkill,
   createProjectTask,
@@ -70,6 +71,7 @@ import {
   type ArchDocQueuedResponse,
   type GenerateArchDocDto,
   type ArchDocType,
+  type PlannerQueuedResponse,
 } from "@/api/projects.api";
 import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
 
@@ -305,6 +307,23 @@ export function useGenerateProjectArchDoc(
     ...rest,
     mutationFn: ({ projectId, data }) => generateProjectArchDoc(projectId, data),
     onSuccess,
+  });
+}
+
+export function useGenerateProjectPlan(
+  options?: UseMutationOptions<PlannerQueuedResponse, Error, { projectId: string }>,
+) {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...rest } = options ?? {};
+  return useMutation({
+    ...rest,
+    mutationFn: ({ projectId }) => generateProjectPlan(projectId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      // Invalidate tasks so the board refreshes once the consumer bulk-creates them
+      queryClient.invalidateQueries({ queryKey: [...projectKeys.detail(variables.projectId), "tasks"] });
+      invalidateProjectOverview(queryClient, variables.projectId);
+      onSuccess?.(data, variables, onMutateResult, context);
+    },
   });
 }
 

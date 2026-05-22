@@ -828,6 +828,86 @@ export async function generateProjectArchDoc(
   return parseResponseData<ArchDocQueuedResponse>(response);
 }
 
+// ─── Ragnarock Chat (project Q&A + intent routing) ───────────────────────────
+
+export type RagnarockDetectedAction = {
+  type: "generate_srs" | "generate_plan" | "generate_doc" | "none";
+  docType?: string;
+  confirmationText: string;
+};
+
+export interface RagnarockChatQueuedResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export async function sendRagnarockMessage(
+  projectId: string,
+  sessionId: string,
+  message: string,
+): Promise<RagnarockChatQueuedResponse> {
+  const response = await apiClient.post<unknown>(
+    PROJECT_ENDPOINTS.AI_RAGNAROCK_CHAT(projectId),
+    { sessionId, message },
+  );
+  return parseResponseData<RagnarockChatQueuedResponse>(response);
+}
+
+export type RagnarockSession = {
+  id: string;
+  title: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RagnarockSessionMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  detectedAction: RagnarockDetectedAction | null;
+  createdAt: string;
+};
+
+export type RagnarockSessionDetail = {
+  session: { id: string; title: string };
+  messages: RagnarockSessionMessage[];
+};
+
+export async function createRagnarockSession(projectId: string): Promise<{ sessionId: string }> {
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.AI_RAGNAROCK_SESSIONS(projectId));
+  return parseResponseData<{ sessionId: string }>(response);
+}
+
+export async function listRagnarockSessions(projectId: string): Promise<RagnarockSession[]> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.AI_RAGNAROCK_SESSIONS(projectId));
+  return parseResponseData<RagnarockSession[]>(response);
+}
+
+export async function getRagnarockSession(
+  projectId: string,
+  sessionId: string,
+): Promise<RagnarockSessionDetail> {
+  const response = await apiClient.get<unknown>(
+    PROJECT_ENDPOINTS.AI_RAGNAROCK_SESSION(projectId, sessionId),
+  );
+  return parseResponseData<RagnarockSessionDetail>(response);
+}
+
+// ─── Project Planner ─────────────────────────────────────────────────────────
+
+export interface PlannerQueuedResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export async function generateProjectPlan(projectId: string): Promise<PlannerQueuedResponse> {
+  const response = await apiClient.post<unknown>(
+    PROJECT_ENDPOINTS.AI_PLAN_GENERATE(projectId),
+  );
+  return parseResponseData<PlannerQueuedResponse>(response);
+}
+
 // ─── Project specifications ──────────────────────────────────────────────────
 
 export type AgentPartialSrs = {

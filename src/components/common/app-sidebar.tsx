@@ -18,6 +18,7 @@ import {
   KeyRound,
   LayoutDashboard,
   ListChecks,
+  MessageSquare,
   Plug,
   Link2,
   ScrollText,

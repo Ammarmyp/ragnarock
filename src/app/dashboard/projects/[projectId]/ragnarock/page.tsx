@@ -1,10 +1,10 @@
-import { ProjectRequirementsLayout } from "@/layouts/dashboard/projects/project-requirements-layout";
+import { RagnarockPageLayout } from "@/layouts/dashboard/projects/ragnarock-page-layout";
 
-export default async function ProjectRequirementsPage({
+export default async function ProjectRagnarockPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <ProjectRequirementsLayout projectId={projectId} />;
+  return <RagnarockPageLayout projectId={projectId} />;
 }

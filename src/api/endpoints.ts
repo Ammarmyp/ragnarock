@@ -67,6 +67,10 @@ export const PROJECT_ENDPOINTS = {
   AI_REQUIREMENTS: (projectId: string) => `/projects/${projectId}/ai/requirements`,
   AI_REQUIREMENTS_UPLOAD: (projectId: string) => `/projects/${projectId}/ai/requirements/upload`,
   AI_ARCH_DOC_GENERATE: (projectId: string) => `/projects/${projectId}/ai/arch-doc/generate`,
+  AI_PLAN_GENERATE: (projectId: string) => `/projects/${projectId}/ai/plan/generate`,
+  AI_RAGNAROCK_CHAT: (projectId: string) => `/projects/${projectId}/ai/ragnarock/chat`,
+  AI_RAGNAROCK_SESSIONS: (projectId: string) => `/projects/${projectId}/ai/ragnarock/sessions`,
+  AI_RAGNAROCK_SESSION: (projectId: string, sessionId: string) => `/projects/${projectId}/ai/ragnarock/sessions/${sessionId}`,
   /** The project's single shared draft SRS — what every new chat continues from. */
   AI_DRAFT: (projectId: string) => `/projects/${projectId}/ai/draft`,
   SPECIFICATIONS: (projectId: string) => `/projects/${projectId}/specifications`,

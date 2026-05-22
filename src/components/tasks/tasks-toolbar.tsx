@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Kanban, LayoutList, Plus } from "lucide-react";
+import { Kanban, LayoutList, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +14,9 @@ import {
 import { taskSelectContentClassName, taskSelectTriggerClassName } from "@/components/tasks/task-ui";
 import { LinearSyncActions } from "@/components/linear/linear-sync-actions";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
-import { useProjectMembers, useProjectRole } from "@/hooks/use-projects";
+import { useGenerateProjectPlan, useProjectMembers, useProjectRole } from "@/hooks/use-projects";
+import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TaskPhase, TaskStatus } from "@/api/projects.api";
 import {
   TASK_PHASE_LABELS,
@@ -46,6 +48,10 @@ export function TasksToolbar({ projectId }: TasksToolbarProps) {
 
   const [createOpen, setCreateOpen] = useState(false);
 
+  const generatePlan = useGenerateProjectPlan();
+  const { data: specs } = useProjectSpecifications(projectId, { page: 1, limit: 1 });
+  const hasSrs = (specs?.data?.length ?? 0) > 0;
+
   return (
     <>
       <div className="flex shrink-0 flex-col gap-4 border-b border-border/50 px-4 pb-4 sm:px-6">
@@ -76,10 +82,33 @@ export function TasksToolbar({ projectId }: TasksToolbarProps) {
             </div>
             <LinearSyncActions projectId={projectId} variant="inline" />
             {canEdit && (
-              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-1 size-4" />
-                New task
-              </Button>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => generatePlan.mutate({ projectId })}
+                        disabled={!hasSrs || generatePlan.isPending}
+                      >
+                        <Sparkles className="mr-1 size-4" />
+                        {generatePlan.isPending ? "Generating…" : "Generate Plan"}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!hasSrs && (
+                    <TooltipContent>
+                      Complete the requirements session first to generate a plan.
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-1 size-4" />
+                  New task
+                </Button>
+              </>
             )}
           </div>
         </div>

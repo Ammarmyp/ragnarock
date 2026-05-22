@@ -26,6 +26,8 @@ import {
   useGenerateProjectArchDoc,
   type ArchDocType,
 } from "@/hooks/use-projects";
+import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +64,9 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
   const [mode, setMode] = useState<CreationMode>("manual");
   const [aiDocType, setAiDocType] = useState<ArchDocType>("sad");
   const [aiLayer, setAiLayer] = useState("");
+
+  const { data: specs } = useProjectSpecifications(projectId, { page: 1, limit: 1 });
+  const hasSrs = (specs?.data?.length ?? 0) > 0;
 
   const createDocumentation = useCreateProjectDocumentation({
     onSuccess: () => {
@@ -141,13 +146,25 @@ export function DocumentationCreateDialog({ projectId }: DocumentationCreateDial
               description="Write your own content"
               onClick={() => setMode("manual")}
             />
-            <ModeButton
-              active={mode === "ai"}
-              icon={<Sparkles className="size-4" />}
-              label="Generate with Ragnarock"
-              description="Produce an architecture doc from your SRS"
-              onClick={() => setMode("ai")}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex-1">
+                  <ModeButton
+                    active={mode === "ai"}
+                    icon={<Sparkles className="size-4" />}
+                    label="Generate with Ragnarock"
+                    description="Produce an architecture doc from your SRS"
+                    onClick={() => hasSrs && setMode("ai")}
+                    disabled={!hasSrs}
+                  />
+                </span>
+              </TooltipTrigger>
+              {!hasSrs && (
+                <TooltipContent>
+                  Complete the requirements session first to generate architecture documents.
+                </TooltipContent>
+              )}
+            </Tooltip>
           </div>
         </div>
 
@@ -250,22 +267,27 @@ function ModeButton({
   label,
   description,
   onClick,
+  disabled = false,
 }: {
   active: boolean;
   icon: React.ReactNode;
   label: string;
   description: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         "flex flex-1 items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-        active
-          ? "border-primary bg-primary/5 text-primary"
-          : "border-border hover:border-muted-foreground/40 hover:bg-muted/40",
+        disabled
+          ? "cursor-not-allowed border-border opacity-40"
+          : active
+            ? "border-primary bg-primary/5 text-primary"
+            : "border-border hover:border-muted-foreground/40 hover:bg-muted/40",
       )}
     >
       <span className="mt-0.5 shrink-0">{icon}</span>
