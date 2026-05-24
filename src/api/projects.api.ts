@@ -200,6 +200,28 @@ export type ProjectRequirement = {
   updatedAt: string;
 };
 
+export type ProjectFeatureRequirement = {
+  id: string;
+  externalId: string | null;
+  title: string;
+  status: "draft" | "in_review" | "approved" | "implemented";
+};
+
+export type ProjectFeature = {
+  id: string;
+  projectId: string;
+  externalId: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  requirements: ProjectFeatureRequirement[];
+  _count: {
+    tasks: number;
+    testCases: number;
+  };
+};
+
 export type ProjectActivity = {
   id: string;
   projectId: string;
@@ -644,6 +666,52 @@ export async function getProjectActivity(
     `${PROJECT_ENDPOINTS.ACTIVITY(projectId)}${buildQueryString(params as unknown as Record<string, unknown>)}`,
   );
   return parseResponseData<PaginatedResponse<ProjectActivity>>(response);
+}
+
+export async function getProjectFeatures(projectId: string): Promise<ProjectFeature[]> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.FEATURES(projectId));
+  return parseResponseData<ProjectFeature[]>(response);
+}
+
+// --- Project API Keys ---
+
+export interface ProjectApiKey {
+  id: string;
+  name: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  createdBy: string;
+}
+
+export interface CreateApiKeyDto {
+  name: string;
+  expiresAt?: string;
+}
+
+export interface CreateApiKeyResponse {
+  id: string;
+  name: string;
+  rawToken: string;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+export async function listProjectApiKeys(projectId: string): Promise<ProjectApiKey[]> {
+  const response = await apiClient.get<unknown>(PROJECT_ENDPOINTS.API_KEYS(projectId));
+  return parseResponseData<ProjectApiKey[]>(response);
+}
+
+export async function createProjectApiKey(
+  projectId: string,
+  dto: CreateApiKeyDto,
+): Promise<CreateApiKeyResponse> {
+  const response = await apiClient.post<unknown>(PROJECT_ENDPOINTS.API_KEYS(projectId), dto);
+  return parseResponseData<CreateApiKeyResponse>(response);
+}
+
+export async function revokeProjectApiKey(projectId: string, keyId: string): Promise<void> {
+  await apiClient.delete(PROJECT_ENDPOINTS.API_KEY(projectId, keyId));
 }
 
 export async function getProjectSkills(

@@ -18,10 +18,12 @@ import {
   GitBranch,
   KeyRound,
   LayoutDashboard,
+  Layers,
   ListChecks,
   Plug,
   Link2,
   ScrollText,
+  Settings,
   SlidersHorizontal,
   Users,
 } from "lucide-react";
@@ -127,6 +129,7 @@ export function AppSidebar({
           items: [
             { title: "Overview", href: `${base}/overview`, icon: LayoutDashboard },
             { title: "Ragnarock", href: `${base}/ragnarock`, icon: Bot },
+            { title: "Features", href: `${base}/features`, icon: Layers },
             { title: "Documentation", href: `${base}/documentation`, icon: FileText },
             { title: "Test Cases", href: `${base}/qa`, icon: FlaskConical },
             { title: "Tasks", href: `${base}/tasks`, icon: ListChecks },
@@ -134,6 +137,7 @@ export function AppSidebar({
             { title: "Activity", href: `${base}/activity`, icon: FolderKanban },
             { title: "Repositories", href: `${base}/repositories`, icon: GitBranch },
             { title: "Linear", href: `${base}/linear`, icon: Link2 },
+            { title: "Settings", href: `${base}/settings`, icon: Settings },
           ],
         },
       ],

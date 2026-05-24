@@ -30,7 +30,11 @@ import {
   getProjectRole,
   getProjects,
   getProjectSkill,
+  getProjectFeatures,
   getProjectSkills,
+  listProjectApiKeys,
+  createProjectApiKey,
+  revokeProjectApiKey,
   getProjectTask,
   getProjectTasks,
   reorderProjectTasks,
@@ -60,6 +64,7 @@ import {
   type ProjectRequirement,
   type ProjectRoleSummary,
   type ProjectSkill,
+  type ProjectFeature,
   type ProjectSkillListItem,
   type ProjectTask,
   type UpdateProjectDocumentationDto,
@@ -72,6 +77,9 @@ import {
   type GenerateArchDocDto,
   type ArchDocType,
   type PlannerQueuedResponse,
+  type ProjectApiKey,
+  type CreateApiKeyDto,
+  type CreateApiKeyResponse,
 } from "@/api/projects.api";
 import type { PaginatedResponse, PaginatedResponseBase, PaginationParams } from "@/types";
 
@@ -93,6 +101,8 @@ export const projectKeys = {
   requirements: (id: string, params: PaginationParams & { status?: ProjectRequirement["status"] }) =>
     [...projectKeys.detail(id), "requirements", params] as const,
   activity: (id: string, params: PaginationParams) => [...projectKeys.detail(id), "activity", params] as const,
+  features: (id: string) => [...projectKeys.detail(id), "features"] as const,
+  apiKeys: (id: string) => [...projectKeys.detail(id), "api-keys"] as const,
   skills: (id: string) => [...projectKeys.detail(id), "skills"] as const,
   skill: (projectId: string, skillId: string) => [...projectKeys.detail(projectId), "skill", skillId] as const,
   aiChatSessions: (projectId: string, params: PaginationParams) =>
@@ -440,6 +450,60 @@ export function useDeleteProjectRequirement(options?: UseMutationOptions<void, E
       invalidateProjectOverview(queryClient, variables.projectId);
       onSuccess?.(data, variables, onMutateResult, context);
     },
+  });
+}
+
+export function useProjectFeatures(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectFeature[], Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.features(projectId),
+    queryFn: () => getProjectFeatures(projectId),
+    enabled: !!projectId,
+    ...options,
+  });
+}
+
+export function useProjectApiKeys(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectApiKey[], Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery({
+    queryKey: projectKeys.apiKeys(projectId),
+    queryFn: () => listProjectApiKeys(projectId),
+    enabled: !!projectId,
+    ...options,
+  });
+}
+
+export function useCreateProjectApiKey(
+  projectId: string,
+  options?: UseMutationOptions<CreateApiKeyResponse, Error, CreateApiKeyDto>,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateApiKeyDto) => createProjectApiKey(projectId, dto),
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.apiKeys(projectId) });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+}
+
+export function useRevokeProjectApiKey(
+  projectId: string,
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (keyId: string) => revokeProjectApiKey(projectId, keyId),
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.apiKeys(projectId) });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
   });
 }
 

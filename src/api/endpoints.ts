@@ -77,6 +77,9 @@ export const PROJECT_ENDPOINTS = {
   SPECIFICATIONS: (projectId: string) => `/projects/${projectId}/specifications`,
   SPECIFICATION: (projectId: string, specificationId: string) =>
     `/projects/${projectId}/specifications/${specificationId}`,
+  FEATURES: (projectId: string) => `/projects/${projectId}/features`,
+  API_KEYS: (projectId: string) => `/projects/${projectId}/api-keys`,
+  API_KEY: (projectId: string, keyId: string) => `/projects/${projectId}/api-keys/${keyId}`,
   REPOSITORIES: (projectId: string) => `/projects/${projectId}/repositories`,
   REPOSITORY: (projectId: string, repositoryId: string) =>
     `/projects/${projectId}/repositories/${repositoryId}`,
