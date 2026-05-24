@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ChevronDown, Copy, Pencil, Save, X } from "lucide-react";
+import { ChevronDown, Copy, Pencil, Save, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { DocumentationMdEditor } from "@/components/documentation/documentation-md-editor";
+import { DocumentationAiEditSheet } from "@/components/documentation/documentation-ai-edit-sheet";
 import { MarkdownContent } from "@/components/documentation/markdown-content";
 import { SrsDocumentBody } from "@/components/requirements-workspace/srs-document-body";
 import type { ProjectDocumentation } from "@/api/projects.api";
@@ -28,19 +30,24 @@ import { copyToClipboard } from "@/utils/helpers";
 
 type DocumentationDetailContentPanelProps = {
   doc: ProjectDocumentation;
+  projectId: string;
   canEdit: boolean;
+  isDeveloper: boolean;
   onSaveContent: (content: string) => Promise<void>;
   savePending: boolean;
 };
 
 export function DocumentationDetailContentPanel({
   doc,
+  projectId,
   canEdit,
+  isDeveloper,
   onSaveContent,
   savePending,
 }: DocumentationDetailContentPanelProps) {
   const [contentDraft, setContentDraft] = useState("");
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
 
   const startEdit = useCallback(() => {
     setContentDraft(doc.content);
@@ -113,6 +120,29 @@ export function DocumentationDetailContentPanel({
               Edit
             </Button>
           )}
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={isDeveloper ? -1 : 0} className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!isDeveloper}
+                    onClick={() => setAiEditOpen(true)}
+                  >
+                    <Sparkles className="mr-1 size-4 text-primary" />
+                    Edit with AI
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!isDeveloper && (
+                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                  Only project members with the Developer persona can edit documents with AI.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -127,6 +157,14 @@ export function DocumentationDetailContentPanel({
           <MarkdownContent content={doc.content} />
         )}
       </div>
+
+      <DocumentationAiEditSheet
+        open={aiEditOpen}
+        onOpenChange={setAiEditOpen}
+        projectId={projectId}
+        docTitle={doc.title}
+        docContent={doc.content ?? ""}
+      />
 
       <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
         <SheetContent

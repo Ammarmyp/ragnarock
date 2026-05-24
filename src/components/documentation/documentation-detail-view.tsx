@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import {
   useDeleteProjectDocumentation,
   useProjectDocumentation,
+  useProjectMembers,
   useProjectRole,
   useUpdateProjectDocumentation,
 } from "@/hooks/use-projects";
+import { authClient } from "@/lib/auth/auth-client";
 import { toast } from "@/lib/toast";
 import { DocumentationDetailHeader } from "@/components/documentation/documentation-detail-header";
 import { DocumentationDetailMetadataForm } from "@/components/documentation/documentation-detail-metadata-form";
@@ -24,8 +26,15 @@ export function DocumentationDetailView({ projectId, documentationId }: Document
   const router = useRouter();
   const { data: doc, isLoading, isError } = useProjectDocumentation(projectId, documentationId);
   const { data: role } = useProjectRole(projectId);
+  const { data: members } = useProjectMembers(projectId);
+  const { data: session } = authClient.useSession();
+
   const canEdit = role?.role === "owner" || role?.role === "admin" || role?.role === "member";
   const canDelete = role?.role === "owner" || role?.role === "admin";
+
+  const currentUserId = session?.user?.id;
+  const myMember = members?.find((m) => m.userId === currentUserId);
+  const isDeveloper = myMember?.personas?.includes("developer") ?? false;
 
   const updateDoc = useUpdateProjectDocumentation({
     onSuccess: () => toast.success("Saved"),
@@ -86,7 +95,9 @@ export function DocumentationDetailView({ projectId, documentationId }: Document
           )}
           <DocumentationDetailContentPanel
             doc={doc}
+            projectId={projectId}
             canEdit={canEdit}
+            isDeveloper={isDeveloper}
             savePending={updateDoc.isPending}
             onSaveContent={async (content) => {
               await updateDoc.mutateAsync({ projectId, documentationId, data: { content } });
