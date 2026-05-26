@@ -3,7 +3,7 @@ FROM node:24-alpine AS deps
 RUN npm install -g pnpm
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────
 FROM deps AS builder
