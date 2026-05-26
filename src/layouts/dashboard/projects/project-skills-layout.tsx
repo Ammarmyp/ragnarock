@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, Pencil, Sparkles, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -65,13 +65,15 @@ export function ProjectSkillsLayout({ projectId }: { projectId: string }) {
 
   const { data: editingSkill, isFetching: editingLoading } = useProjectSkill(projectId, editingId ?? "", {
     enabled: dialogOpen && !!editingId,
-    onSuccess: (skill) => {
-      // Populate latest values after fetch (avoid setState-in-effect lint).
-      setTitle(skill.title);
-      setSummary(skill.summary ?? "");
-      setBodyMarkdown(skill.bodyMarkdown);
-    },
   });
+
+  useEffect(() => {
+    if (editingSkill) {
+      setTitle(editingSkill.title);
+      setSummary(editingSkill.summary ?? "");
+      setBodyMarkdown(editingSkill.bodyMarkdown);
+    }
+  }, [editingSkill]);
 
   const createMutation = useCreateProjectSkill();
   const updateMutation = useUpdateProjectSkill();
