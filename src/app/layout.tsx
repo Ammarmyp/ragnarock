@@ -31,7 +31,7 @@ export default function RootLayout({
       className={`${lexendSans.variable} ${jetBrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full overflow-hidden flex flex-col">
+      <body className="flex min-h-full flex-col">
         <AppProvider>{children}</AppProvider>
       </body>
     </html>
