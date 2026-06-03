@@ -318,6 +318,7 @@ export type ProjectOverviewResponse = {
   progress: {
     taskCompletionPercent: number;
     requirementCompletionPercent: number;
+    srsCompletionPercent: number;
   };
   highlights: {
     lastProjectUpdateAt: string;

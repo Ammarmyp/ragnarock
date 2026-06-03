@@ -155,7 +155,7 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
               <div className="mb-4 flex items-center gap-2 shrink-0">
                 <Badge variant="secondary" className="gap-1 text-xs font-normal">
                   <Bot className="size-3" />
-                  AI Generated
+                  Ragnarock Generated
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   {items.length} test suite{items.length !== 1 ? "s" : ""}

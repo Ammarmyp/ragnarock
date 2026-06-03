@@ -418,6 +418,12 @@ export function ProjectOverviewDashboard({
           </div>
           <div className="flex items-center gap-4 text-right">
             <div>
+              <p className="text-muted-foreground text-xs">SRS</p>
+              <p className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
+                {progress.srsCompletionPercent ?? 0}%
+              </p>
+            </div>
+            <div>
               <p className="text-muted-foreground text-xs">Tasks</p>
               <p className="text-primary text-xl font-bold tabular-nums">
                 {progress.taskCompletionPercent}%

@@ -43,7 +43,7 @@ function buildSrsCardData(
   latestSpec: ProjectSpecification | null,
   sessions: ProjectAiChatSessionWithProgress[],
 ): SrsCardData | null {
-  if (latestSpec) {
+  if (latestSpec?.payload) {
     const p = latestSpec.payload;
     return {
       status: "complete",
@@ -115,7 +115,7 @@ function SrsCard({
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="gap-1 border-transparent font-normal text-xs">
                 <Bot className="size-3" />
-                AI Generated
+                Ragnarock Generated
               </Badge>
               <Badge
                 className={cn(
