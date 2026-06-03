@@ -23,6 +23,8 @@ import { MarkdownContent } from "@/components/documentation/markdown-content";
 import { cn } from "@/lib/utils";
 import { useProject, useProjectRole } from "@/hooks/use-projects";
 import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
+import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
+import { getProjectAiDraft } from "@/api/projects.api";
 import {
   useSendRagnarockMessage,
   useRagnarockSocket,
@@ -313,6 +315,9 @@ export function RagnarockWorkspace({
   const createSrsSession = useCreateSrsSession();
   const submitSrsMessage = useSubmitSrsMessage();
 
+  const applyPartialSrs = useRequirementsWorkspaceStore((s) => s.applyPartialSrs);
+  const applyCompletedSrs = useRequirementsWorkspaceStore((s) => s.applyCompletedSrs);
+
   // Requirements agent socket — active only when in SRS mode
   useSrsSessionSocket({
     projectId: srsMode ? projectId : null,
@@ -341,8 +346,26 @@ export function RagnarockWorkspace({
         ...prev,
         { id: assistantMessageId, role: "assistant", answer, detectedAction: null },
       ]);
+
+      // Live-update the SRS panel after every turn
       if (agent.status === "complete") {
+        applyCompletedSrs(
+          agent as Parameters<typeof applyCompletedSrs>[0],
+          (agent as { specificationId?: string }).specificationId ?? assistantMessageId,
+          assistantMessageId,
+        );
         onPanelChange?.({ mode: "srs" });
+      } else if (agent.status === "needs_clarification") {
+        // Fetch latest draftSrs from backend and push to store
+        void getProjectAiDraft(projectId).then((draft) => {
+          if (draft.draftSrs) {
+            applyPartialSrs(
+              draft.draftSrs,
+              Array.isArray(agent.questions) ? (agent.questions as string[]) : [],
+              assistantMessageId,
+            );
+          }
+        });
       }
     },
     onTurnFailed: ({ error: err }) => {

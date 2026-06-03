@@ -75,7 +75,7 @@ function SrsPanel() {
     () => buildSrsMarkdown(partialSrs, displaySpec),
     [partialSrs, displaySpec],
   );
-  const status = displaySpec ? "complete" : partialSrs ? "in_progress" : "not_started";
+  const status = (displaySpec || displayProgress === 100) ? "complete" : partialSrs ? "in_progress" : "not_started";
   const title = displaySpec?.project_name ?? partialSrs?.project_name ?? "SRS Document";
 
   return (

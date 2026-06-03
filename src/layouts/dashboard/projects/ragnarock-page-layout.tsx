@@ -53,10 +53,16 @@ export function RagnarockPageLayout({ projectId }: { projectId: string }) {
 
         if (cancelled) return;
 
-        // Hydrate the SRS store so SrsPanel shows correct progress + content
+        // Hydrate the SRS store so SrsPanel shows correct progress + content.
+        // If a completed spec exists, use setBaseSpec (shows as "Complete").
+        // Otherwise fall back to the project's partial draft.
         const latestSpec = specsPage.data?.[0] ?? null;
-        if (latestSpec?.payload) setBaseSpec(latestSpec.payload);
-        if (draft) resetSession({ partialSrs: draft.draftSrs, progress: draft.draftSrsProgress });
+        if (latestSpec?.payload) {
+          setBaseSpec(latestSpec.payload);
+          resetSession(); // clear partialSrs so baseSpec takes over as displaySpec
+        } else if (draft?.draftSrs) {
+          resetSession({ partialSrs: draft.draftSrs, progress: draft.draftSrsProgress });
+        }
 
         const latestRagnarock = ragnarockSessions[0] ?? null;
         const latestSrs = srsSessions.data?.[0] ?? null;
