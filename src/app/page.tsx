@@ -1,11 +1,9 @@
-/**
- * Home Page
- * Landing page for the application
- */
+"use client";
 
 import { HomeLayout } from "@/layouts/home/home-layout";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { authClient } from "@/lib/auth/auth-client";
 import {
   ArrowRight,
   Check,
@@ -30,6 +28,8 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const { data: session } = authClient.useSession();
+  const isSignedIn = Boolean(session?.user);
   const painPoints = [
     {
       title: "Intent is informal",
@@ -176,9 +176,11 @@ export default function HomePage() {
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/sign-up">Create Account</Link>
-              </Button>
+              {!isSignedIn && (
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/sign-up">Create Account</Link>
+                </Button>
+              )}
             </div>
 
             <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -377,9 +379,11 @@ export default function HomePage() {
                 <ArrowRight className="ml-2 size-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/sign-in">Sign In</Link>
-            </Button>
+            {!isSignedIn && (
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/sign-in">Sign In</Link>
+              </Button>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">

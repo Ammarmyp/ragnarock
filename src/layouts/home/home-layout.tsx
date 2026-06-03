@@ -10,6 +10,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { authClient } from "@/lib/auth/auth-client";
 
 interface HomeLayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,9 @@ interface HomeLayoutProps {
  * Simple layout for public-facing pages without navigation sidebar
  */
 export function HomeLayout({ children }: HomeLayoutProps) {
+  const { data: session } = authClient.useSession();
+  const isSignedIn = Boolean(session?.user);
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header/Navigation */}
@@ -53,14 +57,18 @@ export function HomeLayout({ children }: HomeLayoutProps) {
             >
               Projects
             </Link>
-            <Link
-              href="/sign-in"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Sign In
-            </Link>
+            {!isSignedIn && (
+              <Link
+                href="/sign-in"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Sign In
+              </Link>
+            )}
             <Button asChild>
-              <Link href="/sign-up">Get Started</Link>
+              <Link href={isSignedIn ? "/dashboard/projects" : "/sign-up"}>
+                {isSignedIn ? "Go to Dashboard" : "Get Started"}
+              </Link>
             </Button>
           </nav>
         </div>
