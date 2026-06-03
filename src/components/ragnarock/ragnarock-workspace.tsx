@@ -23,7 +23,16 @@ import { MarkdownContent } from "@/components/documentation/markdown-content";
 import { cn } from "@/lib/utils";
 import { useProject, useProjectRole } from "@/hooks/use-projects";
 import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
-import { useSendRagnarockMessage, useRagnarockSocket, useGeneratePlan, useGenerateArchDoc, useCreateRagnarockSession } from "@/hooks/use-ragnarock-chat";
+import {
+  useSendRagnarockMessage,
+  useRagnarockSocket,
+  useGeneratePlan,
+  useGenerateArchDoc,
+  useCreateRagnarockSession,
+  useCreateSrsSession,
+  useSubmitSrsMessage,
+  useSrsSessionSocket,
+} from "@/hooks/use-ragnarock-chat";
 import type { RagnarockSessionMessage } from "@/api/projects.api";
 import { RagnarockHistorySheet } from "./ragnarock-history-sheet";
 import type { RagnarockDetectedAction } from "@/api/projects.api";
@@ -227,31 +236,68 @@ const QUICK_STARTERS = [
 
 // ─── Main workspace ───────────────────────────────────────────────────────────
 
+type RestoredSession =
+  | { type: "ragnarock"; detail: import("@/api/projects.api").RagnarockSessionDetail }
+  | { type: "srs"; sessionId: string; messages: import("@/api/projects.api").ProjectAiChatMessage[] }
+  | null;
+
 export function RagnarockWorkspace({
   projectId,
   onPanelChange,
   initialSession,
+  initialRestoredSession,
 }: {
   projectId: string;
   onPanelChange?: (event: PanelChangeEvent) => void;
   initialSession?: { sessionId: string; messages: RagnarockSessionMessage[] } | null;
+  initialRestoredSession?: RestoredSession;
 }) {
-  const [sessionId, setSessionId] = useState<string | null>(initialSession?.sessionId ?? null);
-  const [messages, setMessages] = useState<RagnarockMessage[]>(() =>
-    (initialSession?.messages ?? []).map((m) => (
+  const isSrsRestore = initialRestoredSession?.type === "srs";
+  const isRagnarockRestore = initialRestoredSession?.type === "ragnarock";
+
+  const [sessionId, setSessionId] = useState<string | null>(
+    isRagnarockRestore
+      ? initialRestoredSession.detail.session.id
+      : initialSession?.sessionId ?? null,
+  );
+  const [messages, setMessages] = useState<RagnarockMessage[]>(() => {
+    if (isRagnarockRestore) {
+      return initialRestoredSession.detail.messages.map((m) =>
+        m.role === "user"
+          ? { id: m.id, role: "user" as const, content: m.content }
+          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction },
+      );
+    }
+    if (isSrsRestore) {
+      return initialRestoredSession.messages.map((m) =>
+        m.role === "user"
+          ? { id: m.id, role: "user" as const, content: m.content }
+          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: null },
+      );
+    }
+    return (initialSession?.messages ?? []).map((m) =>
       m.role === "user"
         ? { id: m.id, role: "user" as const, content: m.content }
-        : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction }
-    ))
-  );
+        : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction },
+    );
+  });
   const [draft, setDraft] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [dismissedActions, setDismissedActions] = useState<Set<string>>(new Set());
 
+  // SRS mode — when active, messages go through the requirements agent pipeline
+  const [srsMode, setSrsMode] = useState(isSrsRestore);
+  const [srsSessionId, setSrsSessionId] = useState<string | null>(
+    isSrsRestore ? initialRestoredSession.sessionId : null,
+  );
+  const pendingSrsMessageId = useRef<string | null>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingJobRef = useRef<string | null>(null);
+  const pendingSrsStart = useRef<{ sessionId: string } | null>(null);
 
   const { data: project } = useProject(projectId);
   const { data: role } = useProjectRole(projectId);
@@ -264,16 +310,48 @@ export function RagnarockWorkspace({
   const generatePlan = useGeneratePlan();
   const generateArchDoc = useGenerateArchDoc();
   const createSession = useCreateRagnarockSession();
+  const createSrsSession = useCreateSrsSession();
+  const submitSrsMessage = useSubmitSrsMessage();
 
-  // Create a session on first mount if none provided
-  useEffect(() => {
-    if (!sessionId) {
-      createSession.mutate({ projectId }, {
-        onSuccess: (data) => setSessionId(data.sessionId),
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  // Requirements agent socket — active only when in SRS mode
+  useSrsSessionSocket({
+    projectId: srsMode ? projectId : null,
+    sessionId: srsSessionId,
+    onSessionJoined: () => {
+      // Socket is now subscribed to the session room — safe to send the first message
+      const pending = pendingSrsStart.current;
+      if (pending) {
+        pendingSrsStart.current = null;
+        submitSrsMessage.mutate(
+          { projectId, sessionId: pending.sessionId, input: "/srs" },
+          { onError: () => { setIsProcessing(false); setError("Failed to start requirements session."); } },
+        );
+      }
+    },
+    onProcessing: () => setIsProcessing(true),
+    onTurnCompleted: ({ agent, assistantMessageId }) => {
+      setIsProcessing(false);
+      const answer =
+        agent.status === "needs_clarification" && Array.isArray(agent.questions)
+          ? (agent.questions as string[]).join("\n\n")
+          : agent.status === "complete"
+          ? "Requirements gathered! Your SRS has been saved."
+          : String((agent as { answer?: unknown }).answer ?? "");
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantMessageId, role: "assistant", answer, detectedAction: null },
+      ]);
+      if (agent.status === "complete") {
+        onPanelChange?.({ mode: "srs" });
+      }
+    },
+    onTurnFailed: ({ error: err }) => {
+      setIsProcessing(false);
+      setError(err || "Requirements agent failed.");
+    },
+  });
+
+  // Session is created lazily on first send, not on mount.
 
   const availableCommands = ALL_COMMANDS.filter((cmd) => {
     if (cmd.requiresRole === "editor" && !canEdit) return false;
@@ -328,8 +406,9 @@ export function RagnarockWorkspace({
   const send = useCallback(
     async (text: string) => {
       const body = text.trim();
-      if (!body || isProcessing || !sessionId) return;
+      if (!body || isProcessing) return;
       setDraft("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
       setShowPalette(false);
       setError(null);
 
@@ -338,23 +417,52 @@ export function RagnarockWorkspace({
       setIsProcessing(true);
 
       try {
-        const result = await sendMessage.mutateAsync({ projectId, sessionId, message: body });
-        pendingJobRef.current = result.jobId;
+        if (srsMode) {
+          // Route through the requirements agent pipeline
+          let activeSrsSessionId = srsSessionId;
+          if (!activeSrsSessionId) {
+            const created = await createSrsSession.mutateAsync({ projectId });
+            activeSrsSessionId = created.id;
+            setSrsSessionId(activeSrsSessionId);
+          }
+          await submitSrsMessage.mutateAsync({ projectId, sessionId: activeSrsSessionId, input: body });
+          // Response comes via useSrsSessionSocket onTurnCompleted
+        } else {
+          // Regular Ragnarock Q&A
+          let activeSessionId = sessionId;
+          if (!activeSessionId) {
+            const created = await createSession.mutateAsync({ projectId });
+            activeSessionId = created.sessionId;
+            setSessionId(activeSessionId);
+          }
+          const result = await sendMessage.mutateAsync({ projectId, sessionId: activeSessionId, message: body });
+          pendingJobRef.current = result.jobId;
+        }
       } catch (err) {
         setIsProcessing(false);
         setError(err instanceof Error ? err.message : "Failed to send message.");
       }
     },
-    [projectId, sessionId, isProcessing, sendMessage],
+    [projectId, sessionId, srsMode, srsSessionId, isProcessing, createSession, sendMessage, createSrsSession, submitSrsMessage],
   );
 
   // User confirms an action from the confirmation card
   const handleActionConfirm = useCallback(
     (action: RagnarockDetectedAction) => {
       if (action.type === "generate_srs") {
+        setSrsMode(true);
         onPanelChange?.({ mode: "srs" });
-        // SRS is session-based — navigate user to the requirements tab
-        void send("Starting SRS session — please switch to the Requirements tab to continue.");
+        void (async () => {
+          setIsProcessing(true);
+          try {
+            const created = await createSrsSession.mutateAsync({ projectId });
+            pendingSrsStart.current = { sessionId: created.id };
+            setSrsSessionId(created.id);
+          } catch {
+            setIsProcessing(false);
+            setError("Failed to start requirements session.");
+          }
+        })();
       } else if (action.type === "generate_plan") {
         onPanelChange?.({ mode: "plan", state: { generating: true } });
         generatePlan.mutate({ projectId });
@@ -367,14 +475,27 @@ export function RagnarockWorkspace({
         generateArchDoc.mutate({ projectId, docType });
       }
     },
-    [onPanelChange, send, projectId, generatePlan, generateArchDoc],
+    [onPanelChange, projectId, generatePlan, generateArchDoc, createSrsSession, submitSrsMessage],
   );
 
   const handleCommandSelect = (cmd: string) => {
     setShowPalette(false);
     if (cmd === "/srs") {
+      setSrsMode(true);
       onPanelChange?.({ mode: "srs" });
-      void send(cmd);
+      // Create the session, then store it as pending — the socket's onSessionJoined
+      // fires the first message once the room subscription is confirmed.
+      void (async () => {
+        setIsProcessing(true);
+        try {
+          const created = await createSrsSession.mutateAsync({ projectId });
+          pendingSrsStart.current = { sessionId: created.id };
+          setSrsSessionId(created.id); // triggers useSrsSessionSocket re-effect → join → onSessionJoined
+        } catch {
+          setIsProcessing(false);
+          setError("Failed to start requirements session.");
+        }
+      })();
     } else if (cmd === "/plan") {
       onPanelChange?.({ mode: "plan", state: { generating: true } });
       generatePlan.mutate({ projectId });
@@ -398,14 +519,20 @@ export function RagnarockWorkspace({
           <span className="text-sm font-semibold">
             {project?.name ?? "Ragnarock"}
           </span>
+          {srsMode && (
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <FileText className="size-3" />
+              Requirements session
+            </Badge>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="ml-auto text-xs text-muted-foreground cursor-help">
-                Ask anything · type <kbd className="rounded bg-muted px-1 py-px font-mono text-[10px]">/</kbd> for actions
+                {srsMode ? "Answer the questions to build your SRS" : <>Ask anything · type <kbd className="rounded bg-muted px-1 py-px font-mono text-[10px]">/</kbd> for actions</>}
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-xs">
-              Ragnarock knows your full project — tasks, docs, team, SRS. Type / to trigger generation actions.
+              {srsMode ? "The requirements agent is gathering your project spec. Answer each question to continue." : "Ragnarock knows your full project — tasks, docs, team, SRS. Type / to trigger generation actions."}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
@@ -420,10 +547,10 @@ export function RagnarockWorkspace({
                   setError(null);
                   setIsProcessing(false);
                   setSessionId(null);
+                  setSrsMode(false);
+                  setSrsSessionId(null);
                   pendingJobRef.current = null;
-                  createSession.mutate({ projectId }, {
-                    onSuccess: (data) => setSessionId(data.sessionId),
-                  });
+                  pendingSrsMessageId.current = null;
                 }}
                 className="cursor-pointer text-muted-foreground hover:text-foreground"
               >
@@ -571,11 +698,16 @@ export function RagnarockWorkspace({
             </AnimatePresence>
             <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-background/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur-md transition-shadow focus-within:shadow-xl focus-within:shadow-black/8 dark:bg-card/90">
               <Textarea
+                ref={textareaRef}
                 value={draft}
-                onChange={(e) => handleTextChange(e.target.value)}
+                onChange={(e) => {
+                  handleTextChange(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${e.target.scrollHeight}px`;
+                }}
                 placeholder="Ask about this project… or type / for actions"
                 rows={1}
-                className="max-h-[120px] min-h-[36px] flex-1 resize-none border-0 bg-transparent py-1.5 text-sm shadow-none focus-visible:ring-0"
+                className="max-h-[160px] min-h-[36px] flex-1 resize-none overflow-y-auto border-0 bg-transparent py-1.5 text-sm shadow-none focus-visible:ring-0"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && !showPalette) {
                     e.preventDefault();

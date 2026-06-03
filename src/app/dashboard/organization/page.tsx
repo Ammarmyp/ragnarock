@@ -670,11 +670,13 @@ export default function OrganizationPage() {
                 {teams.map((team) => {
                   const isSelected = selectedTeamId === team.id;
                   return (
-                    <button
+                    <div
                       key={team.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedTeamId(isSelected ? "" : team.id)}
-                      className={`group rounded-lg border p-3 text-left transition-colors hover:bg-muted/40 ${
+                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSelectedTeamId(isSelected ? "" : team.id)}
+                      className={`group cursor-pointer rounded-lg border p-3 text-left transition-colors hover:bg-muted/40 ${
                         isSelected ? "border-primary/50 bg-primary/5" : ""
                       }`}
                     >
@@ -697,7 +699,7 @@ export default function OrganizationPage() {
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {isSelected ? "Click to collapse" : "Click to view members"}
                       </p>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

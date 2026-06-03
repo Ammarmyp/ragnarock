@@ -10,8 +10,11 @@ import {
   generateProjectPlan,
   generateProjectArchDoc,
   generateProjectQaTestSuite,
+  createProjectAiChatSession,
+  submitProjectAiRequirements,
   type RagnarockChatQueuedResponse,
   type RagnarockDetectedAction,
+  type AiTurnQueuedResponse,
   type ArchDocType,
 } from "@/api/projects.api";
 
@@ -173,5 +176,100 @@ export function useGenerateQaTestSuite(
   return useMutation({
     ...options,
     mutationFn: ({ projectId }) => generateProjectQaTestSuite(projectId),
+  });
+}
+
+// ─── Requirements (SRS) session socket + mutations ────────────────────────────
+
+export type SrsTurnCompletedEvent = {
+  userMessageId: string;
+  assistantMessageId: string;
+  agent: {
+    status: string;
+    questions?: string[];
+    [key: string]: unknown;
+  };
+  specificationId?: string;
+};
+
+export type SrsProcessingEvent = { jobId: string; userMessageId: string };
+export type SrsTurnFailedEvent = { userMessageId: string; error: string };
+
+export type UseSrsSessionSocketOptions = {
+  projectId: string | null;
+  sessionId: string | null;
+  onSessionJoined?: () => void;
+  onProcessing?: (payload: SrsProcessingEvent) => void;
+  onTurnCompleted?: (payload: SrsTurnCompletedEvent) => void;
+  onTurnFailed?: (payload: SrsTurnFailedEvent) => void;
+};
+
+export function useSrsSessionSocket(options: UseSrsSessionSocketOptions) {
+  const { projectId, sessionId } = options;
+  const callbacksRef = useRef(options);
+
+  useEffect(() => {
+    callbacksRef.current = options;
+  }, [options]);
+
+  useEffect(() => {
+    if (!projectId || !sessionId) return;
+
+    const baseUrl = getApiBaseUrl();
+    const socket: Socket = io(`${baseUrl}/ai-chat`, {
+      path: "/socket.io",
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+
+    const onProc = (p: SrsProcessingEvent) => callbacksRef.current.onProcessing?.(p);
+    const onDone = (p: SrsTurnCompletedEvent) => callbacksRef.current.onTurnCompleted?.(p);
+    const onFail = (p: SrsTurnFailedEvent) => callbacksRef.current.onTurnFailed?.(p);
+
+    socket.on("processing", onProc);
+    socket.on("turn_completed", onDone);
+    socket.on("turn_failed", onFail);
+
+    const joinRooms = () => {
+      socket.emit("join_project", { projectId });
+      // Use the ack callback — fires only after the server confirms the room join
+      socket.emit("join_session", { projectId, sessionId }, (ack: { ok: boolean }) => {
+        if (ack?.ok) callbacksRef.current.onSessionJoined?.();
+      });
+    };
+    socket.on("connect", joinRooms);
+    if (socket.connected) joinRooms();
+
+    return () => {
+      socket.off("processing", onProc);
+      socket.off("turn_completed", onDone);
+      socket.off("turn_failed", onFail);
+      socket.off("connect", joinRooms);
+      socket.disconnect();
+    };
+  }, [projectId, sessionId]);
+}
+
+export function useCreateSrsSession(
+  options?: UseMutationOptions<{ id: string }, Error, { projectId: string }>,
+) {
+  return useMutation({
+    ...options,
+    mutationFn: ({ projectId }) =>
+      createProjectAiChatSession(projectId, { agentType: "requirements" }) as Promise<{ id: string }>,
+  });
+}
+
+export function useSubmitSrsMessage(
+  options?: UseMutationOptions<
+    AiTurnQueuedResponse,
+    Error,
+    { projectId: string; sessionId: string; input: string }
+  >,
+) {
+  return useMutation({
+    ...options,
+    mutationFn: ({ projectId, sessionId, input }) =>
+      submitProjectAiRequirements(projectId, { sessionId, input, type: "text" }),
   });
 }
