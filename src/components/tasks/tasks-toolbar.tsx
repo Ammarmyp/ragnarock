@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Kanban, LayoutList, Plus, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Kanban, LayoutList, Loader2, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +16,7 @@ import { LinearSyncActions } from "@/components/linear/linear-sync-actions";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { useGenerateProjectPlan, useProjectMembers, useProjectRole } from "@/hooks/use-projects";
 import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
+import { useRagnarockSocket } from "@/hooks/use-ragnarock-chat";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TaskPhase, TaskStatus } from "@/api/projects.api";
 import {
@@ -51,6 +52,27 @@ export function TasksToolbar({ projectId }: TasksToolbarProps) {
   const generatePlan = useGenerateProjectPlan();
   const { data: specs } = useProjectSpecifications(projectId, { page: 1, limit: 1 });
   const hasSrs = (specs?.data?.length ?? 0) > 0;
+
+  const queueKey = `plan-queued:${projectId}`;
+  const [isQueued, setIsQueued] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(queueKey) === "true";
+  });
+
+  // Clear queued flag when the planner completes or fails
+  useRagnarockSocket({
+    projectId,
+    onPlannerCompleted: () => {
+      localStorage.removeItem(queueKey);
+      setIsQueued(false);
+    },
+    onPlannerFailed: () => {
+      localStorage.removeItem(queueKey);
+      setIsQueued(false);
+    },
+  });
+
+  const isGenerating = generatePlan.isPending || isQueued;
 
   return (
     <>
@@ -90,17 +112,34 @@ export function TasksToolbar({ projectId }: TasksToolbarProps) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => generatePlan.mutate({ projectId })}
-                        disabled={!hasSrs || generatePlan.isPending}
+                        onClick={() => {
+                          setIsQueued(true);
+                          localStorage.setItem(queueKey, "true");
+                          generatePlan.mutate({ projectId }, {
+                            onError: () => {
+                              setIsQueued(false);
+                              localStorage.removeItem(queueKey);
+                            },
+                          });
+                        }}
+                        disabled={!hasSrs || isGenerating}
                       >
-                        <Sparkles className="mr-1 size-4" />
-                        {generatePlan.isPending ? "Generating…" : "Generate Plan"}
+                        {isGenerating
+                          ? <Loader2 className="mr-1 size-4 animate-spin" />
+                          : <Sparkles className="mr-1 size-4" />
+                        }
+                        {isGenerating ? "Generating Tasks…" : "Generate Tasks"}
                       </Button>
                     </span>
                   </TooltipTrigger>
                   {!hasSrs && (
                     <TooltipContent>
-                      Complete the requirements session first to generate a plan.
+                      Complete the requirements session first to generate tasks.
+                    </TooltipContent>
+                  )}
+                  {isGenerating && (
+                    <TooltipContent>
+                      Task generation is in progress — please wait.
                     </TooltipContent>
                   )}
                 </Tooltip>
