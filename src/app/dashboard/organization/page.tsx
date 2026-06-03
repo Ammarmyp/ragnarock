@@ -1,7 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Building2,
+  Crown,
+  LogOut,
+  MoreHorizontal,
+  Pencil,
+  Plug,
+  Plus,
+  Shield,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
+import Link from "next/link";
 import { DashboardLayout } from "@/layouts/dashboard/dashboard-layout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,34 +38,50 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth/auth-client";
 import { toast } from "@/lib/toast";
 import { setLastActiveOrganizationIdClient } from "@/lib/organization/last-active-organization";
 
-type Team = {
-  id: string;
-  name: string;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type TeamMember = {
+type OrgRole = "owner" | "admin" | "member";
+
+type OrgMember = {
   id: string;
   userId: string;
-  role: string;
+  role: OrgRole;
+  user?: { name?: string | null; email?: string | null };
 };
 
-type OrganizationMember = {
-  id: string;
-  userId: string;
-  role: string;
-  user?: {
-    name?: string | null;
-    email?: string | null;
-  };
-};
+type OrgTeam = { id: string; name: string };
+
+type TeamMember = { id: string; userId: string; role: string };
 
 type OrgInvitation = {
   id: string;
@@ -44,788 +89,891 @@ type OrgInvitation = {
   role: string;
   status: string;
   expiresAt: string;
-  organizationId: string;
 };
 
-export default function OrganizationPage() {
-  const [organizationName, setOrganizationName] = useState("");
-  const [teamName, setTeamName] = useState("");
-  const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [memberToAddUserId, setMemberToAddUserId] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
-  const [pendingInvitations, setPendingInvitations] = useState<OrgInvitation[]>([]);
-  const [invitationsLoading, setInvitationsLoading] = useState(false);
-  const [isInviting, setIsInviting] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const authFetch = authClient.$fetch as <T>(
-    path: string,
-    options: {
-      method: "GET" | "POST";
-      body?: Record<string, unknown>;
-      query?: Record<string, unknown>;
-    },
-  ) => Promise<{ data: T; error: unknown }>;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  const { data: organizations, refetch: refetchOrganizations } =
-    authClient.useListOrganizations();
-  const { data: activeOrganization, refetch: refetchActiveOrganization } =
+function initials(name?: string | null, email?: string | null) {
+  const src = name?.trim() || email?.trim() || "?";
+  return src
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function roleBadgeVariant(role: string) {
+  if (role === "owner") return "default" as const;
+  if (role === "admin") return "secondary" as const;
+  return "outline" as const;
+}
+
+function roleIcon(role: string) {
+  if (role === "owner") return <Crown className="size-3" />;
+  if (role === "admin") return <Shield className="size-3" />;
+  return null;
+}
+
+function expiresLabel(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function MemberRow({
+  member,
+  isCurrentUser,
+  canManage,
+  isOwner,
+  onChangeRole,
+  onRemove,
+  onLeave,
+}: {
+  member: OrgMember;
+  isCurrentUser: boolean;
+  canManage: boolean;
+  isOwner: boolean;
+  onChangeRole: (userId: string, role: OrgRole) => void;
+  onRemove: (member: OrgMember) => void;
+  onLeave: () => void;
+}) {
+  const name = member.user?.name?.trim() || member.user?.email?.trim() || "Unknown";
+  const email = member.user?.email?.trim() || "";
+  const ini = initials(member.user?.name, member.user?.email);
+  const isLastOwner = member.role === "owner" && isOwner;
+
+  return (
+    <div className="flex items-center justify-between gap-3 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar className="size-8 shrink-0">
+          <AvatarFallback className="text-xs">{ini}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium">{name}</span>
+            {isCurrentUser && (
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                you
+              </Badge>
+            )}
+          </div>
+          {email && (
+            <p className="truncate text-xs text-muted-foreground">{email}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        {canManage && !isCurrentUser && !isLastOwner ? (
+          <Select
+            value={member.role}
+            onValueChange={(v) => onChangeRole(member.userId, v as OrgRole)}
+          >
+            <SelectTrigger className="h-7 w-24 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="member">Member</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant={roleBadgeVariant(member.role)} className="gap-1 text-xs">
+            {roleIcon(member.role)}
+            {member.role}
+          </Badge>
+        )}
+
+        {(canManage || isCurrentUser) && !isLastOwner && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7 shrink-0">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isCurrentUser ? (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={onLeave}
+                >
+                  <LogOut className="mr-2 size-4" />
+                  Leave organization
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => onRemove(member)}
+                >
+                  <UserMinus className="mr-2 size-4" />
+                  Remove from organization
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InvitationRow({
+  inv,
+  canManage,
+  onCancel,
+}: {
+  inv: OrgInvitation;
+  canManage: boolean;
+  onCancel: (id: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="truncate text-sm">{inv.email}</p>
+        <p className="text-xs text-muted-foreground">
+          <span className="capitalize">{inv.role}</span>
+          {" · expires "}
+          {expiresLabel(inv.expiresAt)}
+        </p>
+      </div>
+      {canManage && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={() => onCancel(inv.id)}
+        >
+          <X className="size-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function OrganizationPage() {
+  const { data: activeOrganization, refetch: refetchActiveOrg } =
     authClient.useActiveOrganization();
   const { data: activeMemberRole } = authClient.useActiveMemberRole();
   const { data: session } = authClient.useSession();
-  const sessionUserId = session?.user?.id;
 
-  const activeOrganizationId = activeOrganization?.id;
-  const canManageTeams =
+  const sessionUserId = session?.user?.id ?? "";
+  const canManage =
     activeMemberRole?.role === "owner" || activeMemberRole?.role === "admin";
-  const canInviteMembers =
-    activeMemberRole?.role === "owner" || activeMemberRole?.role === "admin";
-  const teams = useMemo<Team[]>(
-    () => ((activeOrganization as { teams?: Team[] } | null)?.teams ?? []).map((team) => ({
-      id: team.id,
-      name: team.name,
-    })),
-    [activeOrganization],
-  );
-  const organizationMembers = useMemo<OrganizationMember[]>(
-    () => (activeOrganization?.members ?? []) as OrganizationMember[],
+  const isOwner = activeMemberRole?.role === "owner";
+  const activeOrgId = activeOrganization?.id ?? "";
+
+  const authFetch = authClient.$fetch as <T>(
+    path: string,
+    opts: { method: "GET" | "POST"; body?: Record<string, unknown>; query?: Record<string, unknown> },
+  ) => Promise<{ data: T; error: unknown }>;
+
+  // ── Org members & teams from activeOrganization ────────────────────────────
+  const members = useMemo<OrgMember[]>(
+    () => (activeOrganization?.members ?? []) as OrgMember[],
     [activeOrganization?.members],
   );
-  const selectedTeam = useMemo(
-    () => teams.find((team) => team.id === selectedTeamId) ?? null,
-    [selectedTeamId, teams],
-  );
-  const currentUserId = session?.user?.id ?? "";
-  const isCurrentUserInSelectedTeam = useMemo(
-    () =>
-      Boolean(
-        selectedTeamId &&
-          currentUserId &&
-          teamMembers.some((m) => m.userId === currentUserId),
-      ),
-    [selectedTeamId, currentUserId, teamMembers],
-  );
-  const showCompactTeamMembersPanel = Boolean(
-    currentUserId &&
-      selectedTeamId &&
-      selectedTeam &&
-      !canManageTeams &&
-      !isCurrentUserInSelectedTeam,
-  );
-  const teamMemberUserIds = useMemo(
-    () => new Set(teamMembers.map((member) => member.userId)),
-    [teamMembers],
-  );
-  const availableMembersToAdd = useMemo(
-    () => organizationMembers.filter((member) => !teamMemberUserIds.has(member.userId)),
-    [organizationMembers, teamMemberUserIds],
-  );
-  const membersByUserId = useMemo(
-    () =>
-      new Map(
-        organizationMembers.map((member) => [
-          member.userId,
-          {
-            name: member.user?.name || "Unnamed user",
-            email: member.user?.email || member.userId,
-            orgRole: member.role,
-          },
-        ]),
-      ),
-    [organizationMembers],
-  );
-  const generatedOrganizationSlug = useMemo(
-    () =>
-      organizationName
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, ""),
-    [organizationName],
+  const teams = useMemo<OrgTeam[]>(
+    () => ((activeOrganization as { teams?: OrgTeam[] } | null)?.teams ?? []),
+    [activeOrganization],
   );
 
-  const refreshOrganizationData = useCallback(async () => {
-    await Promise.all([refetchOrganizations(), refetchActiveOrganization()]);
-  }, [refetchOrganizations, refetchActiveOrganization]);
-
-  useEffect(() => {
-    setSelectedTeamId("");
-    setMemberToAddUserId("");
-    setTeamMembers([]);
-    setPendingInvitations([]);
-    void refreshOrganizationData();
-  }, [refreshOrganizationData, sessionUserId]);
+  // ── Invitations ────────────────────────────────────────────────────────────
+  const [invitations, setInvitations] = useState<OrgInvitation[]>([]);
+  const [invLoading, setInvLoading] = useState(false);
 
   const loadInvitations = useCallback(async () => {
-    if (!activeOrganizationId || !canInviteMembers) {
-      setPendingInvitations([]);
-      return;
-    }
-    setInvitationsLoading(true);
+    if (!activeOrgId || !canManage) { setInvitations([]); return; }
+    setInvLoading(true);
     try {
-      const result = await authFetch<OrgInvitation[]>("/organization/list-invitations", {
+      const res = await authFetch<OrgInvitation[]>("/organization/list-invitations", {
         method: "GET",
-        query: { organizationId: activeOrganizationId },
+        query: { organizationId: activeOrgId },
       });
-      if (!result.error && Array.isArray(result.data)) {
-        setPendingInvitations(result.data.filter((inv) => inv.status === "pending"));
-      } else {
-        setPendingInvitations([]);
+      if (!res.error && Array.isArray(res.data)) {
+        setInvitations(res.data.filter((i) => i.status === "pending"));
       }
-    } catch {
-      setPendingInvitations([]);
-    } finally {
-      setInvitationsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- authFetch from auth client
-  }, [activeOrganizationId, canInviteMembers]);
+    } catch { setInvitations([]); }
+    finally { setInvLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId, canManage]);
 
-  useEffect(() => {
-    void loadInvitations();
-  }, [loadInvitations]);
+  useEffect(() => { void loadInvitations(); }, [loadInvitations]);
+
+  // ── Team members ───────────────────────────────────────────────────────────
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   const loadTeamMembers = useCallback(async (teamId: string) => {
-    if (!teamId) {
-      setTeamMembers([]);
-      return;
-    }
-    const result = await authFetch<TeamMember[]>(
-      "/organization/list-team-members",
-      {
-        method: "GET",
-        query: { teamId },
-      },
-    );
-    if (!result.error && Array.isArray(result.data)) {
-      setTeamMembers(
-        result.data.map((member) => ({
-          id: member.id,
-          userId: member.userId,
-          role: member.role,
-        })),
-      );
-    }
-  }, [authFetch]);
+    if (!teamId) { setTeamMembers([]); return; }
+    const res = await authFetch<TeamMember[]>("/organization/list-team-members", {
+      method: "GET",
+      query: { teamId },
+    });
+    if (!res.error && Array.isArray(res.data)) setTeamMembers(res.data);
+    else setTeamMembers([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => {
-    void loadTeamMembers(selectedTeamId);
-  }, [loadTeamMembers, selectedTeamId]);
+  useEffect(() => { void loadTeamMembers(selectedTeamId); }, [loadTeamMembers, selectedTeamId]);
 
-  const handleCreateOrganization = async () => {
-    if (!organizationName.trim() || !generatedOrganizationSlug) {
-      toast.error("Enter a valid organization name");
-      return;
-    }
+  // ── Rename org dialog ──────────────────────────────────────────────────────
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameName, setRenameName] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
-    setIsSubmitting(true);
-    try {
-      const loadingToast = toast.loading("Creating organization...");
-      const result = await authFetch<{ id: string }>("/organization/create", {
-        method: "POST",
-        body: {
-        name: organizationName.trim(),
-        slug: generatedOrganizationSlug,
-        },
-      });
-
-      if (result.error) {
-        toast.error("Could not create organization", { id: loadingToast });
-        return;
-      }
-
-      toast.success("Organization created", { id: loadingToast });
-      setOrganizationName("");
-      await refreshOrganizationData();
-    } catch (error) {
-      console.error("Failed to create organization", error);
-      toast.error("Failed to create organization");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const openRename = () => {
+    setRenameName(activeOrganization?.name ?? "");
+    setRenameOpen(true);
   };
 
-  const handleSwitchOrganization = async (organizationId: string) => {
+  const handleRename = async () => {
+    const name = renameName.trim();
+    if (!name || !activeOrgId) return;
+    setRenaming(true);
     try {
-      const loadingToast = toast.loading("Switching organization...");
-      const result = await authFetch<{ success: boolean }>("/organization/set-active", {
+      const res = await authFetch("/organization/update", {
         method: "POST",
-        body: { organizationId },
+        body: { organizationId: activeOrgId, data: { name } },
       });
-      if (result.error) {
-        toast.error("Could not switch organization", { id: loadingToast });
-        return;
-      }
-
-      setLastActiveOrganizationIdClient(organizationId);
-      toast.success("Organization switched", { id: loadingToast });
-      setSelectedTeamId("");
-      setMemberToAddUserId("");
-      await refreshOrganizationData();
-    } catch (error) {
-      console.error("Failed to switch organization", error);
-      toast.error("Failed to switch organization");
-    }
+      if (res.error) { toast.error("Could not rename organization"); return; }
+      toast.success("Organization renamed");
+      setRenameOpen(false);
+      await refetchActiveOrg();
+    } catch { toast.error("Failed to rename organization"); }
+    finally { setRenaming(false); }
   };
+
+  // ── Invite dialog ──────────────────────────────────────────────────────────
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
+  const [inviting, setInviting] = useState(false);
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !activeOrgId) return;
+    setInviting(true);
+    try {
+      const res = await authFetch<{ id: string }>("/organization/invite-member", {
+        method: "POST",
+        body: { email, role: inviteRole, organizationId: activeOrgId },
+      });
+      if (res.error) { toast.error("Could not send invitation"); return; }
+      toast.success("Invitation sent");
+      setInviteEmail("");
+      setInviteRole("member");
+      setInviteOpen(false);
+      await loadInvitations();
+    } catch { toast.error("Failed to send invitation"); }
+    finally { setInviting(false); }
+  };
+
+  // ── Change member role ─────────────────────────────────────────────────────
+  const handleChangeRole = async (userId: string, role: OrgRole) => {
+    try {
+      const res = await authFetch("/organization/update-member-role", {
+        method: "POST",
+        body: { organizationId: activeOrgId, userId, role },
+      });
+      if (res.error) { toast.error("Could not update role"); return; }
+      toast.success("Role updated");
+      await refetchActiveOrg();
+    } catch { toast.error("Failed to update role"); }
+  };
+
+  // ── Remove member ──────────────────────────────────────────────────────────
+  const [removeTarget, setRemoveTarget] = useState<OrgMember | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemoveMember = async () => {
+    if (!removeTarget || !activeOrgId) return;
+    setRemoving(true);
+    try {
+      const res = await authFetch("/organization/remove-member", {
+        method: "POST",
+        body: { organizationId: activeOrgId, memberIdOrEmail: removeTarget.userId },
+      });
+      if (res.error) { toast.error("Could not remove member"); return; }
+      toast.success("Member removed");
+      setRemoveTarget(null);
+      await refetchActiveOrg();
+    } catch { toast.error("Failed to remove member"); }
+    finally { setRemoving(false); }
+  };
+
+  // ── Leave organization ─────────────────────────────────────────────────────
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const handleLeave = async () => {
+    if (!activeOrgId) return;
+    setLeaving(true);
+    try {
+      const res = await authFetch("/organization/leave", {
+        method: "POST",
+        body: { organizationId: activeOrgId },
+      });
+      if (res.error) { toast.error("Could not leave organization"); return; }
+      toast.success("You left the organization");
+      setLastActiveOrganizationIdClient("");
+      window.location.assign("/dashboard/organization/select");
+    } catch { toast.error("Failed to leave organization"); }
+    finally { setLeaving(false); }
+  };
+
+  // ── Create team dialog ─────────────────────────────────────────────────────
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [creatingTeam, setCreatingTeam] = useState(false);
 
   const handleCreateTeam = async () => {
-    if (!canManageTeams) {
-      toast.error("Only organization owner/admin can manage teams");
-      return;
-    }
-    if (!activeOrganizationId) {
-      toast.error("Select an active organization first");
-      return;
-    }
-    if (!teamName.trim()) {
-      toast.error("Enter a team name");
-      return;
-    }
-
-    setIsSubmitting(true);
+    if (!teamName.trim() || !activeOrgId) return;
+    setCreatingTeam(true);
     try {
-      const loadingToast = toast.loading("Creating team...");
-      const result = await authFetch<{ id: string }>("/organization/create-team", {
+      const res = await authFetch<{ id: string }>("/organization/create-team", {
         method: "POST",
-        body: {
-          name: teamName.trim(),
-          organizationId: activeOrganizationId,
-        },
+        body: { name: teamName.trim(), organizationId: activeOrgId },
       });
-
-      if (result.error) {
-        toast.error("Could not create team", { id: loadingToast });
-        return;
-      }
-
-      toast.success("Team created", { id: loadingToast });
+      if (res.error) { toast.error("Could not create team"); return; }
+      toast.success("Team created");
       setTeamName("");
-      await refetchActiveOrganization();
-      if (result.data?.id) {
-        setSelectedTeamId(result.data.id);
-      }
-    } catch (error) {
-      console.error("Failed to create team", error);
-      toast.error("Failed to create team");
-    } finally {
-      setIsSubmitting(false);
-    }
+      setTeamDialogOpen(false);
+      if (res.data?.id) setSelectedTeamId(res.data.id);
+      await refetchActiveOrg();
+    } catch { toast.error("Failed to create team"); }
+    finally { setCreatingTeam(false); }
   };
 
-  const handleRemoveTeam = async (teamId: string) => {
-    if (!canManageTeams) {
-      toast.error("Only organization owner/admin can manage teams");
-      return;
-    }
+  // ── Delete team ────────────────────────────────────────────────────────────
+  const [deleteTeamTarget, setDeleteTeamTarget] = useState<OrgTeam | null>(null);
+  const [deletingTeam, setDeletingTeam] = useState(false);
+
+  const handleDeleteTeam = async () => {
+    if (!deleteTeamTarget) return;
+    setDeletingTeam(true);
     try {
-      const loadingToast = toast.loading("Removing team...");
-      const result = await authFetch<{ message: string }>("/organization/remove-team", {
+      const res = await authFetch("/organization/remove-team", {
         method: "POST",
-        body: { teamId },
+        body: { teamId: deleteTeamTarget.id },
       });
-
-      if (result.error) {
-        toast.error("Could not remove team", { id: loadingToast });
-        return;
-      }
-
-      toast.success("Team removed", { id: loadingToast });
-      if (selectedTeamId === teamId) {
-        setSelectedTeamId("");
-        setMemberToAddUserId("");
-      }
-      await refetchActiveOrganization();
-    } catch (error) {
-      console.error("Failed to remove team", error);
-      toast.error("Failed to remove team");
-    }
+      if (res.error) { toast.error("Could not delete team"); return; }
+      toast.success("Team deleted");
+      if (selectedTeamId === deleteTeamTarget.id) setSelectedTeamId("");
+      setDeleteTeamTarget(null);
+      await refetchActiveOrg();
+    } catch { toast.error("Failed to delete team"); }
+    finally { setDeletingTeam(false); }
   };
+
+  // ── Add/remove team member ─────────────────────────────────────────────────
+  const [addTeamMemberUserId, setAddTeamMemberUserId] = useState("");
+  const [addingTeamMember, setAddingTeamMember] = useState(false);
+
+  const teamMemberUserIds = useMemo(
+    () => new Set(teamMembers.map((m) => m.userId)),
+    [teamMembers],
+  );
+  const membersNotInTeam = useMemo(
+    () => members.filter((m) => !teamMemberUserIds.has(m.userId)),
+    [members, teamMemberUserIds],
+  );
+  const membersByUserId = useMemo(
+    () => new Map(members.map((m) => [m.userId, m])),
+    [members],
+  );
 
   const handleAddTeamMember = async () => {
-    if (!canManageTeams) {
-      toast.error("Only organization owner/admin can manage teams");
-      return;
-    }
-    if (!selectedTeamId || !memberToAddUserId.trim()) {
-      toast.error("Select a team member to add");
-      return;
-    }
-
+    if (!selectedTeamId || !addTeamMemberUserId) return;
+    setAddingTeamMember(true);
     try {
-      const loadingToast = toast.loading("Adding member to team...");
-      const result = await authFetch<{ id: string }>("/organization/add-team-member", {
+      const res = await authFetch<{ id: string }>("/organization/add-team-member", {
         method: "POST",
-        body: {
-          teamId: selectedTeamId,
-          userId: memberToAddUserId.trim(),
-        },
+        body: { teamId: selectedTeamId, userId: addTeamMemberUserId },
       });
-
-      if (result.error) {
-        toast.error("Could not add member to team", { id: loadingToast });
-        return;
-      }
-
-      toast.success("Member added to team", { id: loadingToast });
-      setMemberToAddUserId("");
+      if (res.error) { toast.error("Could not add member to team"); return; }
+      toast.success("Member added to team");
+      setAddTeamMemberUserId("");
       await loadTeamMembers(selectedTeamId);
-    } catch (error) {
-      console.error("Failed to add team member", error);
-      toast.error("Failed to add team member");
-    }
+    } catch { toast.error("Failed to add member"); }
+    finally { setAddingTeamMember(false); }
   };
 
   const handleRemoveTeamMember = async (userId: string) => {
-    if (!canManageTeams) {
-      toast.error("Only organization owner/admin can manage teams");
-      return;
-    }
     if (!selectedTeamId) return;
     try {
-      const loadingToast = toast.loading("Removing member...");
-      const result = await authFetch<{ id: string }>("/organization/remove-team-member", {
+      const res = await authFetch("/organization/remove-team-member", {
         method: "POST",
-        body: {
-          teamId: selectedTeamId,
-          userId,
-        },
+        body: { teamId: selectedTeamId, userId },
       });
-
-      if (result.error) {
-        toast.error("Could not remove member", { id: loadingToast });
-        return;
-      }
-
-      toast.success("Member removed from team", { id: loadingToast });
+      if (res.error) { toast.error("Could not remove member from team"); return; }
+      toast.success("Member removed from team");
       await loadTeamMembers(selectedTeamId);
-    } catch (error) {
-      console.error("Failed to remove team member", error);
-      toast.error("Failed to remove team member");
-    }
+    } catch { toast.error("Failed to remove member"); }
   };
 
-  const handleSelectTeam = (teamId: string) => {
-    setSelectedTeamId((currentTeamId) => (currentTeamId === teamId ? "" : teamId));
-    setMemberToAddUserId("");
-  };
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  if (!activeOrganization) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col gap-6 p-5 sm:p-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-  const handleSendInvitation = async () => {
-    if (!canInviteMembers) {
-      toast.error("Only organization owner or admin can invite members");
-      return;
-    }
-    const email = inviteEmail.trim().toLowerCase();
-    if (!email || !activeOrganizationId) {
-      toast.error("Enter an email address");
-      return;
-    }
-    setIsInviting(true);
-    try {
-      const loadingToast = toast.loading("Sending invitation...");
-      const result = await authFetch<{ id: string }>("/organization/invite-member", {
-        method: "POST",
-        body: {
-          email,
-          role: inviteRole,
-          organizationId: activeOrganizationId,
-        },
-      });
-      if (result.error) {
-        toast.error("Could not send invitation", { id: loadingToast });
-        return;
-      }
-      toast.success("Invitation sent", { id: loadingToast });
-      setInviteEmail("");
-      await loadInvitations();
-    } catch (error) {
-      console.error("Failed to send invitation", error);
-      toast.error("Failed to send invitation");
-    } finally {
-      setIsInviting(false);
-    }
-  };
-
-  const handleCancelInvitation = async (invitationId: string) => {
-    if (!canInviteMembers) return;
-    try {
-      const loadingToast = toast.loading("Canceling invitation...");
-      const result = await authFetch("/organization/cancel-invitation", {
-        method: "POST",
-        body: { invitationId },
-      });
-      if (result.error) {
-        toast.error("Could not cancel invitation", { id: loadingToast });
-        return;
-      }
-      toast.success("Invitation canceled", { id: loadingToast });
-      await loadInvitations();
-    } catch (error) {
-      console.error("Failed to cancel invitation", error);
-      toast.error("Failed to cancel invitation");
-    }
-  };
+  const selectedTeam = teams.find((t) => t.id === selectedTeamId) ?? null;
+  const memberCount = members.length;
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-6 p-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage organizations, invite members, switch workspace, and manage teams.
-          </p>
+      <div className="flex flex-col gap-6 p-5 sm:p-6">
+
+        {/* ── Page header ───────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+              <Building2 className="size-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">
+                {activeOrganization.name}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {activeOrganization.slug} · {memberCount}{" "}
+                {memberCount === 1 ? "member" : "members"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {canManage && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={openRename}>
+                <Pencil className="size-3.5" />
+                Rename
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href="/dashboard/organization/integrations">
+                <Plug className="size-3.5" />
+                Integrations
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        {organizations && organizations.length === 1 && activeOrganization && (
-          <p className="text-muted-foreground text-sm">
-            Active workspace: <span className="text-foreground font-medium">{activeOrganization.name}</span>
-          </p>
-        )}
-
+        {/* ── Members ───────────────────────────────────────────────────── */}
         <Card>
-          <CardHeader>
-            <CardTitle>Create organization</CardTitle>
-            <CardDescription>Set up a new organization workspace.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="org-name">Organization name</Label>
-              <Input
-                id="org-name"
-                value={organizationName}
-                onChange={(e) => setOrganizationName(e.target.value)}
-                placeholder="Acme Inc"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="org-slug">Organization slug</Label>
-              <Input
-                id="org-slug"
-                value={generatedOrganizationSlug}
-                placeholder="acme-inc"
-                readOnly
-                disabled
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={handleCreateOrganization} disabled={isSubmitting} className="w-full">
-                Create organization
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {organizations && organizations.length > 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Switch organization</CardTitle>
-              <CardDescription>Choose the active organization for this session.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {organizations.map((organization) => (
-                <div
-                  key={organization.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div>
-                    <p className="font-medium">{organization.name}</p>
-                    <p className="text-muted-foreground text-xs">{organization.slug}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {organization.id === activeOrganizationId && <Badge>Active</Badge>}
-                    <Button
-                      variant="outline"
-                      onClick={() => handleSwitchOrganization(organization.id)}
-                      disabled={organization.id === activeOrganizationId}
-                    >
-                      Set active
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {activeOrganizationId && canInviteMembers && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Invite members</CardTitle>
-              <CardDescription>
-                Invite people to this organization by email. They join the org first; you can add
-                them to teams afterward.
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Users className="size-4" />
+                Members
+              </CardTitle>
+              <CardDescription className="mt-0.5">
+                {memberCount} {memberCount === 1 ? "person" : "people"} in this organization
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                <div className="grid flex-1 gap-2">
-                  <Label htmlFor="invite-email">Email</Label>
-                  <Input
-                    id="invite-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="colleague@company.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    disabled={isInviting}
-                  />
-                </div>
-                <div className="grid flex-1 gap-2 md:max-w-[200px]">
-                  <Label htmlFor="invite-role">Organization role</Label>
-                  <select
-                    id="invite-role"
-                    className="border-input bg-background h-10 w-full rounded-md border px-3 py-2 text-sm"
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "member" | "admin")}
-                    disabled={isInviting}
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <Button
-                  type="button"
-                  className="md:mb-0.5"
-                  disabled={isInviting || !inviteEmail.trim()}
-                  onClick={() => void handleSendInvitation()}
-                >
-                  Send invite
-                </Button>
-              </div>
+            </div>
+            {canManage && (
+              <Button size="sm" className="gap-1.5" onClick={() => setInviteOpen(true)}>
+                <UserPlus className="size-3.5" />
+                Invite
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y">
+              {members.map((member) => (
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  isCurrentUser={member.userId === sessionUserId}
+                  canManage={canManage}
+                  isOwner={isOwner}
+                  onChangeRole={(userId, role) => void handleChangeRole(userId, role)}
+                  onRemove={setRemoveTarget}
+                  onLeave={() => setLeaveOpen(true)}
+                />
+              ))}
+            </div>
 
-              <div>
-                <h4 className="mb-2 text-sm font-medium">Pending invitations</h4>
-                {invitationsLoading ? (
-                  <p className="text-muted-foreground text-sm">Loading…</p>
-                ) : pendingInvitations.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No pending invitations.</p>
+            {/* Pending invitations */}
+            {canManage && (invLoading || invitations.length > 0) && (
+              <>
+                <Separator className="my-4" />
+                <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Pending invitations
+                </p>
+                {invLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                  </div>
                 ) : (
                   <div className="space-y-2">
-                    {pendingInvitations.map((inv) => (
-                      <div
+                    {invitations.map((inv) => (
+                      <InvitationRow
                         key={inv.id}
-                        className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <p className="text-sm font-medium">{inv.email}</p>
-                          <p className="text-muted-foreground text-xs">
-                            Role: {inv.role} · Expires{" "}
-                            {new Date(inv.expiresAt).toLocaleString(undefined, {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void handleCancelInvitation(inv.id)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                        inv={inv}
+                        canManage={canManage}
+                        onCancel={async (id) => {
+                          try {
+                            const res = await authFetch("/organization/cancel-invitation", {
+                              method: "POST",
+                              body: { invitationId: id },
+                            });
+                            if (res.error) { toast.error("Could not cancel invitation"); return; }
+                            toast.success("Invitation cancelled");
+                            await loadInvitations();
+                          } catch { toast.error("Failed to cancel invitation"); }
+                        }}
+                      />
                     ))}
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* ── Teams ─────────────────────────────────────────────────────── */}
         <Card>
-          <CardHeader>
-            <CardTitle>Team management</CardTitle>
-            <CardDescription>
-              Create teams, view members in a team, and assign/remove organization members.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col gap-3 md:flex-row">
-              <Input
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="New team name"
-                disabled={!canManageTeams}
-              />
-              <Button
-                onClick={handleCreateTeam}
-                disabled={!activeOrganizationId || isSubmitting || !canManageTeams}
-              >
-                Create team
-              </Button>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base">Teams</CardTitle>
+              <CardDescription className="mt-0.5">
+                {teams.length === 0
+                  ? "No teams yet"
+                  : `${teams.length} ${teams.length === 1 ? "team" : "teams"}`}
+              </CardDescription>
             </div>
-            {!canManageTeams && (
-              <p className="text-muted-foreground text-sm">
-                You can view teams, but only organization owner/admin can manage teams and members.
+            {canManage && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setTeamDialogOpen(true)}>
+                <Plus className="size-3.5" />
+                New team
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="pt-0">
+            {teams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {canManage
+                  ? "Create a team to group members for project collaboration."
+                  : "No teams have been created in this organization."}
               </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {teams.map((team) => {
+                  const isSelected = selectedTeamId === team.id;
+                  return (
+                    <button
+                      key={team.id}
+                      type="button"
+                      onClick={() => setSelectedTeamId(isSelected ? "" : team.id)}
+                      className={`group rounded-lg border p-3 text-left transition-colors hover:bg-muted/40 ${
+                        isSelected ? "border-primary/50 bg-primary/5" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium leading-tight">{team.name}</p>
+                        {canManage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTeamTarget(team);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {isSelected ? "Click to collapse" : "Click to view members"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             )}
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border p-4">
-                <h3 className="font-medium">Teams</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Select a team to view and manage its members.
-                </p>
-                <div className="mt-4 space-y-2">
-                  {teams.length ? (
-                    teams.map((team) => (
-                      <div
-                        key={team.id}
-                        className="hover:bg-muted/40 flex cursor-pointer items-center justify-between rounded-md border p-3 transition-colors"
-                        onClick={() => handleSelectTeam(team.id)}
-                      >
-                        <div className="text-left">
-                          <p className="font-medium">{team.name}</p>
-                          <p className="text-muted-foreground text-xs">{team.id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant={selectedTeamId === team.id ? "secondary" : "outline"}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleSelectTeam(team.id);
-                            }}
-                          >
-                            {selectedTeamId === team.id ? "Unselect" : "Select"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleRemoveTeam(team.id);
-                            }}
-                            disabled={!canManageTeams}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      No teams in this organization.
-                    </p>
-                  )}
+            {/* Team member panel */}
+            {selectedTeam && (
+              <div className="mt-4 rounded-lg border bg-muted/20 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-medium">{selectedTeam.name}</p>
+                  <Badge variant="secondary" className="text-xs">
+                    {teamMembers.length} {teamMembers.length === 1 ? "member" : "members"}
+                  </Badge>
                 </div>
-              </div>
 
-              <div
-                className={
-                  showCompactTeamMembersPanel
-                    ? "rounded-lg border p-3"
-                    : "rounded-lg border p-4"
-                }
-              >
-                {showCompactTeamMembersPanel && selectedTeam ? (
-                  <>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-medium leading-tight">
-                          {selectedTeam.name}
-                        </h3>
-                        <p className="text-muted-foreground mt-0.5 text-xs">
-                          You&apos;re not on this team
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        {teamMembers.length}{" "}
-                        {teamMembers.length === 1 ? "member" : "members"}
-                      </Badge>
-                    </div>
-                    <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-                      Member list and changes are hidden. Ask an organization owner or admin to
-                      add you to this team if you need access.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="font-medium">
-                      {selectedTeam ? `${selectedTeam.name} members` : "Team members"}
-                    </h3>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      Add organization members to this team or remove existing members.
-                    </p>
-
-                    <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                      <select
-                        className="border-input bg-background h-10 w-full rounded-md border px-3 py-2 text-sm"
-                        value={memberToAddUserId}
-                        onChange={(e) => setMemberToAddUserId(e.target.value)}
-                        disabled={!selectedTeamId || !canManageTeams}
-                      >
-                        <option value="">Select organization member</option>
-                        {availableMembersToAdd.map((member) => {
-                          const user = membersByUserId.get(member.userId);
+                {canManage && membersNotInTeam.length > 0 && (
+                  <div className="mb-3 flex gap-2">
+                    <Select
+                      value={addTeamMemberUserId}
+                      onValueChange={setAddTeamMemberUserId}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1">
+                        <SelectValue placeholder="Add a member…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {membersNotInTeam.map((m) => {
+                          const label = m.user?.name?.trim() || m.user?.email?.trim() || m.userId;
                           return (
-                            <option key={member.userId} value={member.userId}>
-                              {user?.name || member.userId} ({user?.email || member.userId})
-                            </option>
+                            <SelectItem key={m.userId} value={m.userId} className="text-xs">
+                              {label}
+                            </SelectItem>
                           );
                         })}
-                      </select>
-                      <Button
-                        onClick={handleAddTeamMember}
-                        disabled={!selectedTeamId || !memberToAddUserId || !canManageTeams}
-                      >
-                        Add member
-                      </Button>
-                    </div>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1"
+                      disabled={!addTeamMemberUserId || addingTeamMember}
+                      onClick={() => void handleAddTeamMember()}
+                    >
+                      <Plus className="size-3.5" />
+                      Add
+                    </Button>
+                  </div>
+                )}
 
-                    <div className="mt-4 space-y-2">
-                      {selectedTeamId ? (
-                        teamMembers.length ? (
-                          teamMembers.map((member) => {
-                            const user = membersByUserId.get(member.userId);
-                            return (
-                              <div
-                                key={member.id}
-                                className="flex items-center justify-between rounded-md border p-3"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium">
-                                    {user?.name || member.userId}
-                                  </p>
-                                  <p className="text-muted-foreground text-xs">
-                                    {user?.email || member.userId}
-                                  </p>
-                                  <div className="mt-1 flex items-center gap-2">
-                                    <Badge variant="secondary">Team role: {member.role}</Badge>
-                                    {user?.orgRole && (
-                                      <Badge variant="outline">Org role: {user.orgRole}</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleRemoveTeamMember(member.userId)}
-                                  disabled={!canManageTeams}
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <p className="text-muted-foreground text-sm">
-                            No members in the selected team.
-                          </p>
-                        )
-                      ) : (
-                        <p className="text-muted-foreground text-sm">
-                          Select a team to view members.
-                        </p>
-                      )}
-                    </div>
-                  </>
+                {teamMembers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No members in this team yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {teamMembers.map((tm) => {
+                      const orgMember = membersByUserId.get(tm.userId);
+                      const name =
+                        orgMember?.user?.name?.trim() ||
+                        orgMember?.user?.email?.trim() ||
+                        tm.userId;
+                      const email = orgMember?.user?.email?.trim() || "";
+                      const ini = initials(orgMember?.user?.name, orgMember?.user?.email);
+                      return (
+                        <div key={tm.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted/40">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar className="size-6 shrink-0">
+                              <AvatarFallback className="text-[10px]">{ini}</AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-medium">{name}</p>
+                              {email && <p className="truncate text-[10px] text-muted-foreground">{email}</p>}
+                            </div>
+                          </div>
+                          {canManage && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-6 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => void handleRemoveTeamMember(tm.userId)}
+                            >
+                              <X className="size-3" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Dialogs & Alerts ──────────────────────────────────────────────── */}
+
+      {/* Rename org */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Rename organization</DialogTitle>
+            <DialogDescription>Update the display name for this workspace.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rename-org-name">Organization name</Label>
+            <Input
+              id="rename-org-name"
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void handleRename()}
+              disabled={renaming}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)} disabled={renaming}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleRename()} disabled={renaming || !renameName.trim()}>
+              {renaming ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite member */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Invite member</DialogTitle>
+            <DialogDescription>
+              Send an email invitation to join this organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email address</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                autoComplete="off"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={inviting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-role">Role</Label>
+              <Select
+                value={inviteRole}
+                onValueChange={(v) => setInviteRole(v as "member" | "admin")}
+              >
+                <SelectTrigger id="invite-role" disabled={inviting}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={inviting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleInvite()}
+              disabled={inviting || !inviteEmail.trim()}
+            >
+              {inviting ? "Sending…" : "Send invite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove org member confirm */}
+      <AlertDialog open={removeTarget !== null} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeTarget
+                ? `${removeTarget.user?.name?.trim() || removeTarget.user?.email?.trim() || "This member"} will be removed from the organization and lose access to all projects.`
+                : "This member will be removed from the organization."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={removing}
+              onClick={(e) => { e.preventDefault(); void handleRemoveMember(); }}
+            >
+              {removing ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leave org confirm */}
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave organization?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will lose access to all projects in this organization. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={leaving}
+              onClick={(e) => { e.preventDefault(); void handleLeave(); }}
+            >
+              {leaving ? "Leaving…" : "Leave"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create team */}
+      <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create team</DialogTitle>
+            <DialogDescription>
+              Teams let you group members for easier project collaboration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="team-name">Team name</Label>
+            <Input
+              id="team-name"
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void handleCreateTeam()}
+              placeholder="e.g. Engineering, Design"
+              disabled={creatingTeam}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTeamDialogOpen(false)} disabled={creatingTeam}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleCreateTeam()}
+              disabled={creatingTeam || !teamName.trim()}
+            >
+              {creatingTeam ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete team confirm */}
+      <AlertDialog open={deleteTeamTarget !== null} onOpenChange={(o) => !o && setDeleteTeamTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete team?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTeamTarget
+                ? `"${deleteTeamTarget.name}" will be permanently deleted. Members will not be removed from the organization.`
+                : "This team will be permanently deleted."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingTeam}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingTeam}
+              onClick={(e) => { e.preventDefault(); void handleDeleteTeam(); }}
+            >
+              {deletingTeam ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

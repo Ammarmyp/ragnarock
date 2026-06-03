@@ -146,8 +146,7 @@ export function DashboardLayout({
           <DashboardHeaderActions user={user} />
         </header>
 
-        {/* Main Content — overflow-hidden so each route controls its own scroll */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</main>
       </SidebarInset>
       </SidebarProvider>
       </div>

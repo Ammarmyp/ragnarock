@@ -76,10 +76,13 @@ export function DashboardAuthGate({ children }: { children: React.ReactNode }) {
         clearLastActiveOrganizationIdClient();
       } finally {
         setRestoreAttemptFinished(true);
-        router.refresh();
+        // Do not call router.refresh() — it triggers a full RSC re-render that
+        // re-runs useActiveOrganization from scratch, adding a visible delay.
+        // The useActiveOrganization hook will re-fetch and pick up the new active
+        // org on its own after setRestoreAttemptFinished triggers a re-render.
       }
     })();
-  }, [activeLoading, activeOrganization?.id, authFetch, isExempt, router]);
+  }, [activeLoading, activeOrganization?.id, authFetch, isExempt]);
 
   useEffect(() => {
     if (isExempt) return;

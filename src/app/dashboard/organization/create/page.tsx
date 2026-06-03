@@ -93,8 +93,7 @@ export default function CreateOrganizationOnboardingPage() {
 
       setLastActiveOrganizationIdClient(result.data.id);
       toast.success("Organization created", { id: loadingToast });
-      router.replace("/dashboard/projects");
-      router.refresh();
+      window.location.assign("/dashboard/projects");
     } catch (error) {
       console.error("Organization creation failed", error);
       toast.error("Failed to create organization");
