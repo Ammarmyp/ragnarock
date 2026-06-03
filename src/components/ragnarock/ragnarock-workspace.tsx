@@ -350,7 +350,7 @@ export function RagnarockWorkspace({
       // Live-update the SRS panel after every turn
       if (agent.status === "complete") {
         applyCompletedSrs(
-          agent as Parameters<typeof applyCompletedSrs>[0],
+          agent as unknown as Parameters<typeof applyCompletedSrs>[0],
           (agent as { specificationId?: string }).specificationId ?? assistantMessageId,
           assistantMessageId,
         );
