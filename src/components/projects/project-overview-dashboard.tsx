@@ -376,8 +376,8 @@ export function ProjectOverviewDashboard({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title="Tasks"
-          value={`${stats.tasksDone} / ${stats.totalTasks}`}
-          sub={`${inProgressTasks} in progress · ${reviewingTasks} in review`}
+          value={stats.totalTasks === 0 ? "None yet" : `${stats.tasksDone} / ${stats.totalTasks}`}
+          sub={stats.totalTasks === 0 ? "Generate tasks from SRS" : `${inProgressTasks} in progress · ${reviewingTasks} in review`}
           icon={ListChecks}
           iconClass="text-emerald-600 dark:text-emerald-400"
           href={`${base}/tasks`}
@@ -385,8 +385,8 @@ export function ProjectOverviewDashboard({
         />
         <KpiCard
           title="Requirements"
-          value={stats.totalRequirements}
-          sub={`${stats.requirementsImplemented} implemented`}
+          value={stats.totalRequirements === 0 ? "None yet" : stats.totalRequirements}
+          sub={stats.totalRequirements === 0 ? "Complete SRS to capture requirements" : `${stats.requirementsImplemented} implemented · ${stats.totalRequirements - stats.requirementsImplemented} remaining`}
           icon={FileText}
           href={`${base}/ragnarock`}
           linkLabel="View all"
@@ -409,64 +409,96 @@ export function ProjectOverviewDashboard({
 
       {/* ── Progress ─────────────────────────────────────────────────────── */}
       <Card className="border-border/60 shadow-sm">
-        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="text-base">Project progress</CardTitle>
-            <CardDescription>
-              Last activity {relativeTime(highlights.lastActivityAt)}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-4 text-right">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-muted-foreground text-xs">SRS</p>
-              <p className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
-                {progress.srsCompletionPercent ?? 0}%
-              </p>
+              <CardTitle className="text-base">Project progress</CardTitle>
+              <CardDescription>
+                Last activity {relativeTime(highlights.lastActivityAt)}
+              </CardDescription>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs">Tasks</p>
-              <p className="text-primary text-xl font-bold tabular-nums">
-                {progress.taskCompletionPercent}%
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-xs">Requirements</p>
-              <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                {progress.requirementCompletionPercent}%
-              </p>
+            {/* Phase indicator */}
+            <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+              {(progress.srsCompletionPercent ?? 0) < 100
+                ? <><span className="size-1.5 rounded-full bg-violet-500 inline-block" /> Requirements gathering</>
+                : stats.totalTasks === 0
+                ? <><span className="size-1.5 rounded-full bg-amber-500 inline-block" /> Ready to plan tasks</>
+                : stats.tasksDone === stats.totalTasks && stats.totalTasks > 0
+                ? <><span className="size-1.5 rounded-full bg-emerald-500 inline-block" /> All tasks complete</>
+                : <><span className="size-1.5 rounded-full bg-primary inline-block" /> Active development</>
+              }
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
+          {/* SRS progress */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Tasks by status</span>
-              <span>{stats.totalTasks} total</span>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-muted-foreground">SRS — Requirements specification</span>
+              <span className={cn(
+                "font-semibold tabular-nums",
+                (progress.srsCompletionPercent ?? 0) === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-violet-600 dark:text-violet-400"
+              )}>
+                {progress.srsCompletionPercent ?? 0}%
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  (progress.srsCompletionPercent ?? 0) === 100 ? "bg-emerald-500" : "bg-violet-500"
+                )}
+                style={{ width: `${progress.srsCompletionPercent ?? 0}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {(progress.srsCompletionPercent ?? 0) === 100
+                ? `${stats.totalRequirements} requirements captured · spec complete`
+                : "Complete the SRS session in Ragnarock to capture all requirements"}
+            </p>
+          </div>
+
+          {/* Tasks */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-muted-foreground">Tasks — Development progress</span>
+              <span className="font-semibold tabular-nums text-primary">
+                {stats.tasksDone} / {stats.totalTasks} done
+              </span>
             </div>
             <DistributionBar segments={taskStatusSegments} />
             <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
-              {taskStatusSegments.filter((s) => s.value > 0).map((s) => (
-                <span key={s.label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <span className={cn("inline-block size-2 rounded-full", s.colorClass)} />
-                  {s.label} ({s.value})
-                </span>
-              ))}
+              {stats.totalTasks === 0
+                ? <span className="text-[10px] text-muted-foreground">No tasks yet — generate a task plan from the completed SRS</span>
+                : taskStatusSegments.filter((s) => s.value > 0).map((s) => (
+                  <span key={s.label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className={cn("inline-block size-2 rounded-full", s.colorClass)} />
+                    {s.label} ({s.value})
+                  </span>
+                ))
+              }
             </div>
           </div>
 
+          {/* Requirements */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Requirements by status</span>
-              <span>{stats.totalRequirements} total</span>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-muted-foreground">Requirements — Implementation status</span>
+              <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {stats.requirementsImplemented} / {stats.totalRequirements} implemented
+              </span>
             </div>
             <DistributionBar segments={reqStatusSegments} />
             <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
-              {reqStatusSegments.filter((s) => s.value > 0).map((s) => (
-                <span key={s.label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <span className={cn("inline-block size-2 rounded-full", s.colorClass)} />
-                  {s.label} ({s.value})
-                </span>
-              ))}
+              {stats.totalRequirements === 0
+                ? <span className="text-[10px] text-muted-foreground">No requirements yet — complete the SRS session first</span>
+                : reqStatusSegments.filter((s) => s.value > 0).map((s) => (
+                  <span key={s.label} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className={cn("inline-block size-2 rounded-full", s.colorClass)} />
+                    {s.label} ({s.value})
+                  </span>
+                ))
+              }
             </div>
           </div>
         </CardContent>
