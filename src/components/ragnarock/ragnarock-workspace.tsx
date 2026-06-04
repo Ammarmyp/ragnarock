@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ClipboardList,
   FileText,
+  FlaskConical,
   Loader2,
   SquarePen,
   Send,
@@ -30,6 +31,7 @@ import {
   useRagnarockSocket,
   useGeneratePlan,
   useGenerateArchDoc,
+  useGenerateQaTestSuite,
   useCreateRagnarockSession,
   useCreateSrsSession,
   useSubmitSrsMessage,
@@ -105,6 +107,14 @@ const ALL_COMMANDS: SlashCommand[] = [
     label: "Generate ADR",
     description: "Architecture Decision Record — context, decision, rationale",
     icon: <BookOpen className="size-4" />,
+    requiresSrs: true,
+    requiresRole: "editor",
+  },
+  {
+    command: "/qa",
+    label: "Generate test cases",
+    description: "Generate a full QA test suite from the completed SRS",
+    icon: <FlaskConical className="size-4" />,
     requiresSrs: true,
     requiresRole: "editor",
   },
@@ -311,6 +321,7 @@ export function RagnarockWorkspace({
   const sendMessage = useSendRagnarockMessage();
   const generatePlan = useGeneratePlan();
   const generateArchDoc = useGenerateArchDoc();
+  const generateQa = useGenerateQaTestSuite();
   const createSession = useCreateRagnarockSession();
   const createSrsSession = useCreateSrsSession();
   const submitSrsMessage = useSubmitSrsMessage();
@@ -527,6 +538,9 @@ export function RagnarockWorkspace({
       const docType = (cmd.split(" ")[1] ?? "sad") as "sad" | "hld" | "lld" | "adr";
       onPanelChange?.({ mode: "doc", state: { title: docType.toUpperCase(), content: "", docType, generating: true } });
       generateArchDoc.mutate({ projectId, docType });
+      void send(cmd);
+    } else if (cmd === "/qa") {
+      generateQa.mutate({ projectId });
       void send(cmd);
     }
   };

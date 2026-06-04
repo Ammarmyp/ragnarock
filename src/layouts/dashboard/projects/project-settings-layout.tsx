@@ -142,7 +142,7 @@ function CreateKeyDialog({ projectId }: { projectId: string }) {
                   mcpServers: {
                     ragnarock: {
                       type: "http",
-                      url: "http://localhost:3002/mcp",
+                      url: `${process.env.NEXT_PUBLIC_MCP_URL ?? "http://localhost:8002"}/mcp`,
                       headers: { "x-ragnarock-key": newToken },
                     },
                   },

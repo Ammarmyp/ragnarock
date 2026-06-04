@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, Bot, FlaskConical, Loader2, RefreshCw } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,7 +14,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
 
 export function ProjectQaLayout({ projectId }: { projectId: string }) {
-  const [generating, setGenerating] = useState(false);
+  const queueKey = `qa-queued:${projectId}`;
+  const [isQueued, setIsQueued] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(queueKey) === "true";
+  });
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useProjectDocumentations(projectId, {
@@ -30,11 +35,9 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
   const canGenerate = role?.role === "owner" || role?.role === "admin" || role?.role === "member";
 
   const generateQa = useGenerateQaTestSuite({
-    onSuccess: () => {
-      setGenerating(true);
-      toast.info("Generating test suite — this may take a moment.");
-    },
     onError: (err) => {
+      setIsQueued(false);
+      localStorage.removeItem(queueKey);
       toast.error(err.message ?? "Failed to start test suite generation.");
     },
   });
@@ -42,15 +45,19 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
   useRagnarockSocket({
     projectId,
     onQaCompleted: (payload: QaIntelligenceCompletedEvent) => {
-      setGenerating(false);
+      setIsQueued(false);
+      localStorage.removeItem(queueKey);
       toast.success(`Test suite ready: ${payload.title}`);
       void queryClient.invalidateQueries({ queryKey: ["projects", "detail", projectId, "documentations"] });
     },
     onQaFailed: () => {
-      setGenerating(false);
+      setIsQueued(false);
+      localStorage.removeItem(queueKey);
       toast.error("Test suite generation failed. Please try again.");
     },
   });
+
+  const isGenerating = generateQa.isPending || isQueued;
 
   const items = data?.items ?? [];
   const totalPages = data?.totalPages ?? 0;
@@ -68,13 +75,17 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
               <span>
                 <Button
                   size="sm"
-                  disabled={generating || generateQa.isPending || !hasSrs}
-                  onClick={() => generateQa.mutate({ projectId })}
+                  disabled={isGenerating || !hasSrs}
+                  onClick={() => {
+                    setIsQueued(true);
+                    localStorage.setItem(queueKey, "true");
+                    generateQa.mutate({ projectId });
+                  }}
                 >
-                  {generating || generateQa.isPending ? (
+                  {isGenerating ? (
                     <>
                       <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                      Generating…
+                      Generating Test Suite…
                     </>
                   ) : (
                     <>
@@ -90,12 +101,17 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
                 Complete the SRS requirements first before generating test cases.
               </TooltipContent>
             )}
+            {isGenerating && (
+              <TooltipContent side="bottom" className="text-xs max-w-[200px] text-center">
+                Test suite generation is in progress — please wait.
+              </TooltipContent>
+            )}
           </Tooltip>
         )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-4 sm:px-6 sm:pb-6">
-        {!hasSrs && !generating && (
+        {!hasSrs && !isGenerating && (
           <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive shrink-0">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" />
             <span>
@@ -106,7 +122,7 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        {hasSrs && !hasTasks && !generating && (
+        {hasSrs && !hasTasks && !isGenerating && (
           <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3 text-sm text-amber-700 dark:text-amber-400 shrink-0">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" />
             <span>
@@ -116,14 +132,14 @@ export function ProjectQaLayout({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        {generating && (
+        {isGenerating && (
           <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary shrink-0">
             <Loader2 className="size-4 animate-spin shrink-0" />
             <span>QA Intelligence Agent is analyzing your SRS and generating test cases…</span>
           </div>
         )}
 
-        {!generating && items.length === 0 && !isLoading && (
+        {!isGenerating && items.length === 0 && !isLoading && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
               <FlaskConical className="size-6 text-muted-foreground/60" />
