@@ -23,10 +23,14 @@ import {
   type ProjectAiChatMessage,
 } from "@/api/projects.api";
 
-type RestoredSession =
-  | { type: "ragnarock"; detail: RagnarockSessionDetail }
-  | { type: "srs"; sessionId: string; messages: ProjectAiChatMessage[] }
-  | null;
+export type RestoredSession = {
+  /** Ragnarock Q&A messages (may be empty) */
+  ragnarockSessionId: string | null;
+  ragnarockMessages: RagnarockSessionDetail["messages"];
+  /** SRS agent messages (may be empty) */
+  srsSessionId: string | null;
+  srsMessages: ProjectAiChatMessage[];
+} | null;
 
 export function RagnarockPageLayout({ projectId }: { projectId: string }) {
   const [panelMode, setPanelMode] = useState<RightPanelMode>("idle");
@@ -67,21 +71,29 @@ export function RagnarockPageLayout({ projectId }: { projectId: string }) {
         const latestRagnarock = ragnarockSessions[0] ?? null;
         const latestSrs = srsSessions.data?.[0] ?? null;
 
-        const useRagnarock =
-          latestRagnarock &&
-          (!latestSrs || new Date(latestRagnarock.updatedAt) >= new Date(latestSrs.updatedAt));
-
-        if (useRagnarock && latestRagnarock.messageCount > 0) {
-          const detail = await getRagnarockSession(projectId, latestRagnarock.id);
-          if (!cancelled) setRestored({ type: "ragnarock", detail });
-        } else if (latestSrs) {
-          const msgs = await listProjectAiChatMessages(projectId, latestSrs.id, { page: 1, limit: 100 });
-          if (!cancelled) {
-            setRestored({ type: "srs", sessionId: latestSrs.id, messages: msgs.data ?? [] });
-            setPanelMode("srs");
-          }
-        } else {
+        if (!latestRagnarock && !latestSrs) {
           if (!cancelled) setRestored(null);
+          return;
+        }
+
+        // Fetch both in parallel — merge into one unified conversation
+        const [ragnarockDetail, srsMsgs] = await Promise.all([
+          latestRagnarock && latestRagnarock.messageCount > 0
+            ? getRagnarockSession(projectId, latestRagnarock.id).catch(() => null)
+            : Promise.resolve(null),
+          latestSrs
+            ? listProjectAiChatMessages(projectId, latestSrs.id, { page: 1, limit: 100 }).catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        if (!cancelled) {
+          if (latestSrs) setPanelMode("srs");
+          setRestored({
+            ragnarockSessionId: latestRagnarock?.id ?? null,
+            ragnarockMessages: ragnarockDetail?.messages ?? [],
+            srsSessionId: latestSrs?.id ?? null,
+            srsMessages: srsMsgs.data ?? [],
+          });
         }
       } catch {
         if (!cancelled) setRestored(null);

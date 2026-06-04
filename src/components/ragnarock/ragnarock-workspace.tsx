@@ -26,6 +26,7 @@ import { useProject, useProjectRole } from "@/hooks/use-projects";
 import { useProjectSpecifications } from "@/hooks/use-project-ai-chat";
 import { useRequirementsWorkspaceStore } from "@/stores/requirements-workspace.store";
 import { getProjectAiDraft } from "@/api/projects.api";
+import type { RestoredSession } from "@/layouts/dashboard/projects/ragnarock-page-layout";
 import {
   useSendRagnarockMessage,
   useRagnarockSocket,
@@ -248,11 +249,6 @@ const QUICK_STARTERS = [
 
 // ─── Main workspace ───────────────────────────────────────────────────────────
 
-type RestoredSession =
-  | { type: "ragnarock"; detail: import("@/api/projects.api").RagnarockSessionDetail }
-  | { type: "srs"; sessionId: string; messages: import("@/api/projects.api").ProjectAiChatMessage[] }
-  | null;
-
 export function RagnarockWorkspace({
   projectId,
   onPanelChange,
@@ -264,28 +260,26 @@ export function RagnarockWorkspace({
   initialSession?: { sessionId: string; messages: RagnarockSessionMessage[] } | null;
   initialRestoredSession?: RestoredSession;
 }) {
-  const isSrsRestore = initialRestoredSession?.type === "srs";
-  const isRagnarockRestore = initialRestoredSession?.type === "ragnarock";
-
   const [sessionId, setSessionId] = useState<string | null>(
-    isRagnarockRestore
-      ? initialRestoredSession.detail.session.id
-      : initialSession?.sessionId ?? null,
+    initialRestoredSession?.ragnarockSessionId ?? initialSession?.sessionId ?? null,
   );
+
   const [messages, setMessages] = useState<RagnarockMessage[]>(() => {
-    if (isRagnarockRestore) {
-      return initialRestoredSession.detail.messages.map((m) =>
+    // Merge ragnarock + SRS messages chronologically into one unified conversation
+    if (initialRestoredSession) {
+      const ragnarockMsgs: RagnarockMessage[] = initialRestoredSession.ragnarockMessages.map((m) =>
         m.role === "user"
-          ? { id: m.id, role: "user" as const, content: m.content }
-          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction },
+          ? { id: m.id, role: "user" as const, content: m.content, _ts: new Date(m.createdAt).getTime() }
+          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction, _ts: new Date(m.createdAt).getTime() },
       );
-    }
-    if (isSrsRestore) {
-      return initialRestoredSession.messages.map((m) =>
+      const srsMsgs: RagnarockMessage[] = initialRestoredSession.srsMessages.map((m) =>
         m.role === "user"
-          ? { id: m.id, role: "user" as const, content: m.content }
-          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: null },
+          ? { id: m.id, role: "user" as const, content: m.content, _ts: new Date(m.createdAt).getTime() }
+          : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: null, _ts: new Date(m.createdAt).getTime() },
       );
+      const merged = [...ragnarockMsgs, ...srsMsgs].sort((a, b) => ((a as any)._ts ?? 0) - ((b as any)._ts ?? 0));
+      // Strip the temporary _ts sort key
+      return merged.map(({ ...m }) => { delete (m as any)._ts; return m; });
     }
     return (initialSession?.messages ?? []).map((m) =>
       m.role === "user"
@@ -293,16 +287,17 @@ export function RagnarockWorkspace({
         : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction },
     );
   });
+
   const [draft, setDraft] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [dismissedActions, setDismissedActions] = useState<Set<string>>(new Set());
 
-  // SRS mode — when active, messages go through the requirements agent pipeline
-  const [srsMode, setSrsMode] = useState(isSrsRestore);
+  // SRS mode — restored if there's a prior SRS session
+  const [srsMode, setSrsMode] = useState(!!initialRestoredSession?.srsSessionId);
   const [srsSessionId, setSrsSessionId] = useState<string | null>(
-    isSrsRestore ? initialRestoredSession.sessionId : null,
+    initialRestoredSession?.srsSessionId ?? null,
   );
   const pendingSrsMessageId = useRef<string | null>(null);
 
@@ -600,19 +595,44 @@ export function RagnarockWorkspace({
           </Tooltip>
           <RagnarockHistorySheet
             projectId={projectId}
-            onSelectSession={(detail) => {
+            onSelectSession={async (detail) => {
               setSessionId(detail.session.id);
-              setMessages(
-                detail.messages.map((m) =>
-                  m.role === "user"
-                    ? { id: m.id, role: "user" as const, content: m.content }
-                    : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction },
-                ),
-              );
+              setSrsMode(false);
+              setSrsSessionId(null);
               setDraft("");
               setError(null);
               setIsProcessing(false);
               pendingJobRef.current = null;
+
+              // Fetch any SRS session that overlaps with this ragnarock session and merge
+              const ragnarockMsgs: RagnarockMessage[] = detail.messages.map((m) => ({
+                ...(m.role === "user"
+                  ? { id: m.id, role: "user" as const, content: m.content }
+                  : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: m.detectedAction }),
+                _ts: new Date(m.createdAt).getTime(),
+              }));
+
+              try {
+                const { listProjectAiChatSessions, listProjectAiChatMessages } = await import("@/api/projects.api");
+                const srsSessions = await listProjectAiChatSessions(projectId, { page: 1, limit: 10 });
+                const srsSession = srsSessions.data?.[0] ?? null;
+                if (srsSession) {
+                  const srsMsgPage = await listProjectAiChatMessages(projectId, srsSession.id, { page: 1, limit: 100 });
+                  const srsMsgs: RagnarockMessage[] = (srsMsgPage.data ?? []).map((m) => ({
+                    ...(m.role === "user"
+                      ? { id: m.id, role: "user" as const, content: m.content }
+                      : { id: m.id, role: "assistant" as const, answer: m.content, detectedAction: null }),
+                    _ts: new Date(m.createdAt).getTime(),
+                  }));
+                  const merged = [...ragnarockMsgs, ...srsMsgs].sort((a, b) => ((a as any)._ts ?? 0) - ((b as any)._ts ?? 0));
+                  setMessages(merged.map(({ ...m }) => { delete (m as any)._ts; return m; }));
+                  setSrsMode(true);
+                  setSrsSessionId(srsSession.id);
+                  return;
+                }
+              } catch { /* non-fatal — fall back to ragnarock-only */ }
+
+              setMessages(ragnarockMsgs.map(({ ...m }) => { delete (m as any)._ts; return m; }));
             }}
           />
         </div>
